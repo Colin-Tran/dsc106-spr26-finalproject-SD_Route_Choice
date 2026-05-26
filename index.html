@@ -2,20 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Pedestrian Safety in Downtown San Diego</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route Safety Map</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="main.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js" defer></script>
+  <script src="main.js" defer></script>
 </head>
+
 <body>
-  <main>
-    <section class="intro">
-      <h1>Exploring Pedestrian Safety and Walkability in Downtown San Diego</h1>
+  <header class="hero">
+    <h1>Exploring Pedestrian Safety and Walkability in Downtown San Diego</h1>
+
+    <p class="authors">
+      Brian Sun, Colin Tran, Maxime Chung, Christian Kimayong |
+      DSC 106, Spring 2026
+    </p>
+
+    <div class="summary-box">
       <p>
-        How do crime, lighting, foot traffic, and route length shape the walking experience?
+        Little Italy to Seaport Village is consistently the safest route,
+        while Gaslamp to Convention Center shows the largest day/night shift.
+        Crime density explains most variation across routes.
       </p>
+    </div>
+
+  </header>
+
+  <main class="page">
+
+    <section class="top-grid">
+      <section class="map-card">
+        <h2>Downtown San Diego | Route Safety Map</h2>
+
+        <div id="map">
+          <div class="route-label">Convention Center</div>
+
+          <div class="legend">
+            <p><span class="line red"></span> Low safety (edge)</p>
+            <p><span class="line yellow"></span> Moderate safety</p>
+            <p><span class="line blue"></span> High safety (edge)</p>
+            <p><span class="dot orange"></span> Streetlight</p>
+            <p><span class="dot red-dot"></span> Crime incident</p>
+          </div>
+
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <h3>Select Route</h3>
+
+        <div id="route-list"></div>
+
+        <h3>Time of Day</h3>
+
+        <div class="toggle">
+          <button class="active" id="day-btn">Day</button>
+          <button id="night-btn">Night</button>
+        </div>
+
+        <h3>Map Layers</h3>
+
+        <div class="layer-row">
+          <span>Street safety</span>
+          <label class="switch"><input type="checkbox" checked><span></span></label>
+        </div>
+
+        <div class="layer-row">
+          <span>Streetlights</span>
+          <label class="switch"><input type="checkbox"><span></span></label>
+        </div>
+
+        <div class="layer-row">
+          <span>Crime incidents</span>
+          <label class="switch"><input type="checkbox"><span></span></label>
+        </div>
+
+        <section class="breakdown">
+          <h3>Safety Breakdown</h3>
+          <div id="breakdown"></div>
+        </section>
+        
+      </aside>
     </section>
+
+    <section class="chart-card">
+      <h2>Route Comparison</h2>
+      <p>
+        Safety scores by category. Select a route to highlight its bars.
+        Day/night toggle dims the inactive crime column.
+      </p>
+      <div id="comparison-chart"></div>
+    </section>
+
   </main>
+
 </body>
 
 </html>
