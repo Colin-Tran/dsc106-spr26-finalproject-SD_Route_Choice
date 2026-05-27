@@ -145,10 +145,7 @@ project-root/
 │   └── route_scores.csv
 │
 ├── scripts/
-│   ├── clean_crime.py
-│   ├── clean_pedestrians.py
-│   └── compute_scores.py
-│
+│   
 ├── images/
 │
 └── README.md
