@@ -82,6 +82,33 @@ d3.select("#night-btn").on("click", () => {
   update();
 });
 
+mapboxgl.accessToken = "pk.eyJ1IjoiY290MDA1IiwiYSI6ImNtcDdyY293YzA0dWwycm9vMWI1b3c1a2gifQ.xnmRfXDpmNiLHhWphuPh-g";
+
+const map = new mapboxgl.Map({
+  container: "map",
+  style: "mapbox://styles/cot005/cmpnhldw3003m01r8a5gfg34l",
+  center: [-117.1611, 32.7157], // downtown San Diego
+  zoom: 13
+});
+
+map.on("load", () => {
+  map.addSource("routes", {
+    type: "geojson",
+    data: "data/routes.geojson"
+  });
+
+  map.addLayer({
+    id: "routes-layer",
+    type: "line",
+    source: "routes",
+    paint: {
+      "line-width": 5,
+      "line-color": ["get", "color"],
+      "line-opacity": 0.85
+    }
+  });
+});
+
 function getOverall(d) {
   const crime = timeOfDay === "day" ? d.crimeDay : d.crimeNight;
   return Math.round((crime * 0.4) + (d.infra * 0.35) + (d.walk * 0.25));
