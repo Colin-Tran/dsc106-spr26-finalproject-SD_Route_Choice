@@ -321,10 +321,11 @@ body {
 #route-story {
   display: flex;
   flex-direction: column;
-
   gap: 80vh;
-}
 
+  padding-top: 40vh;
+  padding-bottom: 60vh;
+}
 .step {
   background: white;
   padding: 1.25rem;

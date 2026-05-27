@@ -296,7 +296,6 @@ function updateScoreProgress() {
     .text(explanation);
 }
 
-
 const scroller = scrollama();
 
 scroller
@@ -306,6 +305,7 @@ scroller
     offset: 0.6,
     debug: false
   })
+
   .onStepEnter(response => {
     const step = +response.element.dataset.step;
 
@@ -313,6 +313,21 @@ scroller
     d3.select(response.element).classed("active", true);
 
     updateScrollyStep(step);
+  })
+
+  .onStepExit(response => {
+    if (response.direction === "up") {
+      const step = +response.element.dataset.step - 1;
+
+      if (step >= 0) {
+        updateScrollyStep(step);
+
+        d3.selectAll(".step").classed("active", false);
+
+        d3.select(`.step[data-step="${step}"]`)
+          .classed("active", true);
+      }
+    }
   });
 
 window.addEventListener("resize", scroller.resize);
