@@ -86,28 +86,97 @@ mapboxgl.accessToken = "pk.eyJ1IjoiY290MDA1IiwiYSI6ImNtcDdyY293YzA0dWwycm9vMWI1b
 
 const map = new mapboxgl.Map({
   container: "map",
-  style: "mapbox://styles/cot005/cmpnhldw3003m01r8a5gfg34l",
-  center: [-117.1611, 32.7157], // downtown San Diego
+  style: "mapbox://styles/mapbox/light-v11",
+  //style: "mapbox://styles/cot005/cmpnhldw3003m01r8a5gfg34l",
+  center: [-117.1611, 32.7157],
   zoom: 13
 });
 
-map.on("load", () => {
+const routeCoords = [
+  {
+    name: "Santa Fe Depot to Petco Park",
+    color: "#4e79a7",
+    start: [-117.1695, 32.7169],
+    end: [-117.1566, 32.7073]
+  },
+  {
+    name: "Gaslamp to Convention Center",
+    color: "#f28e2b",
+    start: [-117.1606, 32.7114],
+    end: [-117.1601, 32.7066]
+  },
+  {
+    name: "Little Italy to Seaport Village",
+    color: "#59a14f",
+    start: [-117.1687, 32.7241],
+    end: [-117.1717, 32.7098]
+  },
+  {
+    name: "East Village to 12th & Imperial",
+    color: "#b07aa1",
+    start: [-117.1512, 32.7110],
+    end: [-117.1530, 32.7064]
+  },
+  {
+    name: "Hillcrest to Balboa Park",
+    color: "#76b7b2",
+    start: [-117.1605, 32.7482],
+    end: [-117.1467, 32.7341]
+  }
+];
+
+async function fetchRoute(route) {
+  const url =
+    `https://api.mapbox.com/directions/v5/mapbox/walking/` +
+    `${route.start[0]},${route.start[1]};${route.end[0]},${route.end[1]}` +
+    `?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+
+  const res = await fetch(url);
+  const json = await res.json();
+
+  return {
+    type: "Feature",
+    properties: {
+      name: route.name,
+      color: route.color,
+      distance: json.routes[0].distance,
+      duration: json.routes[0].duration
+    },
+    geometry: json.routes[0].geometry
+  };
+}
+
+async function loadRoutes() {
+  const features = await Promise.all(routeCoords.map(fetchRoute));
+
+  const routesGeoJSON = {
+    type: "FeatureCollection",
+    features
+  };
+
   map.addSource("routes", {
     type: "geojson",
-    data: "data/routes.geojson"
+    data: routesGeoJSON
   });
 
   map.addLayer({
     id: "routes-layer",
     type: "line",
     source: "routes",
+    layout: {
+      "line-join": "round",
+      "line-cap": "round"
+    },
     paint: {
-      "line-width": 5,
       "line-color": ["get", "color"],
-      "line-opacity": 0.85
+      "line-width": 5,
+      "line-opacity": 0.8
     }
   });
-});
+}
+
+map.on("load", loadRoutes);
+
 
 function getOverall(d) {
   const crime = timeOfDay === "day" ? d.crimeDay : d.crimeNight;
