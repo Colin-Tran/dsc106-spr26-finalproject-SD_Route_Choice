@@ -1,3 +1,6 @@
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
+import scrollama from 'https://cdn.jsdelivr.net/npm/scrollama@3.2.0/+esm';
+
 const routes = [
   {
     name: "Santa Fe Depot to Petco Park",
@@ -48,6 +51,7 @@ const routes = [
 
 let selectedRoute = routes[0];
 let timeOfDay = "day";
+let activeLayer = "distance";
 
 const routeList = d3.select("#route-list");
 
@@ -196,12 +200,130 @@ function drawChart() {
   });
 }
 
+// Placeholder functions for scrollytelling steps --> guide audience through the story with narrative text and map layers
+function showOnlyRoutes() {
+  console.log("Show only route distance");
+}
+
+function showCrimeLayer() {
+  console.log("Show crime incidents");
+}
+
+function showPedestrianLayer() {
+  console.log("Show pedestrian density");
+}
+
+function showLightingLayer() {
+  console.log("Show lighting");
+}
+
+function showFinalComparison() {
+  console.log("Show final route comparison");
+}
+
+function setTimeOfDay(time) {
+  timeOfDay = time;
+
+  d3.select("#day-btn").classed("active", timeOfDay === "day");
+  d3.select("#night-btn").classed("active", timeOfDay === "night");
+}
+
+
+function updateScrollyStep(step) {
+  if (step === 0) {
+    activeLayer = "distance";
+    setTimeOfDay("day");
+  }
+
+  if (step === 1) {
+    activeLayer = "crime";
+  }
+
+  if (step === 2) {
+    activeLayer = "infra";
+  }
+
+  if (step === 3) {
+    activeLayer = "walk";
+    setTimeOfDay("night");
+  }
+
+  if (step === 4) {
+    activeLayer = "all";
+  }
+
+  update();
+}
+
+
+function updateScoreProgress() {
+  let score = 50;
+  let explanation = "Base route score using distance only.";
+
+  const crime = timeOfDay === "day"
+    ? selectedRoute.crimeDay
+    : selectedRoute.crimeNight;
+
+  if (activeLayer === "crime") {
+    score = Math.round((50 * 0.6) + (crime * 0.4));
+
+    explanation = "Crime density changes the route safety score.";
+  }
+
+  if (activeLayer === "infra") {
+    score = Math.round(
+      (crime * 0.4) +
+      (selectedRoute.infra * 0.35) +
+      (50 * 0.25)
+    );
+
+    explanation = "Infrastructure and lighting improve safety.";
+  }
+
+  if (activeLayer === "walk" || activeLayer === "all") {
+    score = getOverall(selectedRoute);
+
+    explanation = "Walkability and pedestrian activity complete the final score.";
+  }
+
+  d3.select("#score-number")
+    .text(score);
+
+  d3.select("#score-bar-fill")
+    .style("width", `${score}%`);
+
+  d3.select("#score-explanation")
+    .text(explanation);
+}
+
+
+const scroller = scrollama();
+
+scroller
+  .setup({
+    container: "#scrolly-1",
+    step: "#scrolly-1 .step",
+    offset: 0.6,
+    debug: false
+  })
+  .onStepEnter(response => {
+    const step = +response.element.dataset.step;
+
+    d3.selectAll(".step").classed("active", false);
+    d3.select(response.element).classed("active", true);
+
+    updateScrollyStep(step);
+  });
+
+window.addEventListener("resize", scroller.resize);
+
 function update() {
   d3.selectAll(".route-option")
     .classed("active", d => d.name === selectedRoute.name);
 
   updateBreakdown();
   drawChart();
+  updateScoreProgress();
 }
 
 update();

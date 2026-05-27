@@ -4,6 +4,7 @@ body {
   color: #111827;
 }
 
+/* Intro and Summary Box Styling */
 .summary-box {
   display: inline-block;
 
@@ -20,12 +21,16 @@ body {
   line-height: 1.5;
 }
 
+
+/* Breakdown Card Styling */
 .breakdown-card {
   background: #2f60a8;
   padding: 1rem;
   border-radius: 8px;
 }
 
+
+/* Metric / Progress Bar Styling */
 .metric {
   margin-bottom: 1rem;
 }
@@ -58,22 +63,36 @@ body {
   color: #666;
 }
 
+
+/* Main Page Layout */
 .page {
   padding: 16px;
 }
 
 .top-grid {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
+
+  grid-template-columns: 1fr 320px;
+
+  gap: 1rem;
+
+  align-items: start;
 }
 
+/* Map / Sidebar /  Chart Card Styling */
 .map-card,
 .sidebar,
 .chart-card {
   background: white;
   border: 1px solid #ddd;
   border-radius: 6px;
+}
+
+.map-sidebar-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  align-items: start;
 }
 
 .map-card {
@@ -86,6 +105,7 @@ body {
   font-size: 19px;
 }
 
+/* Map Styling */
 #map {
   height: 700px;
   position: relative;
@@ -101,6 +121,7 @@ body {
   color: #555;
 }
 
+/* Legend Styling */
 .legend {
   position: absolute;
   bottom: 16px;
@@ -139,6 +160,8 @@ body {
 .orange { background: #f59e0b; }
 .red-dot { background: #ef4444; }
 
+
+/* Sidebar Styling */
 .sidebar {
   padding: 20px;
 }
@@ -170,6 +193,7 @@ body {
   border-radius: 50%;
 }
 
+/* Toggle Button Styling*/
 .toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -191,6 +215,7 @@ body {
   font-weight: bold;
 }
 
+/* Layer Toggle Styling */
 .layer-row {
   display: flex;
   justify-content: space-between;
@@ -231,6 +256,8 @@ body {
   left: 19px;
 }
 
+
+/* Safety Breakdown Panel */
 .breakdown {
   background: #f4f7fb;
   padding: 14px;
@@ -265,6 +292,8 @@ body {
   color: #6b7280;
 }
 
+
+/* Chart Card Styling (comparison chart) */
 .chart-card {
   margin-top: 32px;
   padding: 24px;
@@ -279,3 +308,87 @@ body {
   width: 100%;
   height: 360px;
 }
+
+/* Scrollytelling styles */
+#scrolly-1 {
+  display: grid;
+  grid-template-columns: 35% 65%;
+  gap: 2rem;
+
+  align-items: start;
+}
+
+#route-story {
+  display: flex;
+  flex-direction: column;
+
+  gap: 80vh;
+}
+
+.step {
+  background: white;
+  padding: 1.25rem;
+  border-left: 5px solid #4a90e2;
+  border-radius: 8px;
+  opacity: 0.35;
+  transition: opacity 0.3s ease;
+}
+
+.step.active {
+  opacity: 1;
+}
+
+#route-viz {
+  position: sticky;
+  top: 1rem;
+
+  height: fit-content;
+}
+
+/* Safety Score Progress */
+.score-progress-card {
+  margin-top: 1rem;
+
+  padding: 0.9rem;
+
+  background: #f7f9fc;
+
+  border-radius: 8px;
+}
+
+.score-number {
+  font-size: 1.7rem;
+  font-weight: 700;
+
+  margin-bottom: 0.6rem;
+}
+
+.score-bar-bg {
+  width: 100%;
+  height: 10px;
+
+  background: #dce3ec;
+
+  border-radius: 999px;
+
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  width: 50%;
+
+  background: #4e79a7;
+
+  transition: width 0.5s ease;
+}
+
+#score-explanation {
+  margin-top: 0.7rem;
+
+  font-size: 0.82rem;
+  line-height: 1.4;
+
+  color: #555;
+}
+

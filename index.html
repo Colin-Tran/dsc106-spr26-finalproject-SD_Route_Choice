@@ -6,7 +6,7 @@
   <title>Route Safety Map</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://d3js.org/d3.v7.min.js" defer></script>
-  <script src="main.js" defer></script>
+  <script type="module" src="main.js"></script>
 </head>
 
 <body>
@@ -29,8 +29,55 @@
   </header>
 
   <main class="page">
+    <div id="scrolly-1">
 
-    <section class="top-grid">
+      <div id="route-story">
+        <div class="step" data-step="0">
+          <h2>1. Start with distance</h2>
+          <p>At first, the shortest route seems like the obvious choice.</p>
+        </div>
+
+        <div class="step" data-step="1">
+          <h2>2. Add crime data</h2>
+          <p>Once crime exposure is added, some routes become less comfortable.</p>
+        </div>
+
+        <div class="step" data-step="2">
+          <h2>3. Add foot traffic</h2>
+          <p>Busy routes may feel safer because there are more people nearby.</p>
+        </div>
+
+        <div class="step" data-step="3">
+          <h2>4. Switch to night</h2>
+          <p>At night, lighting and activity levels become more important.</p>
+        </div>
+
+        <div class="step" data-step="4">
+          <h2>5. Final comparison</h2>
+          <p>The safest route depends on what factors you care about most.</p>
+        </div>
+    </div>
+    
+  <div id="route-viz">
+
+    <!-- TOP: progress bar -->
+    <section class="score-progress-card">
+      <h3>Safety Score Build</h3>
+
+      <div class="score-number" id="score-number">50</div>
+
+      <div class="score-bar-bg">
+        <div class="score-bar-fill" id="score-bar-fill"></div>
+      </div>
+
+      <p id="score-explanation">
+        Base route score using distance only.
+      </p>
+    </section>
+
+    <!-- MIDDLE: map left, sidebar right -->
+    <section class="map-sidebar-grid">
+
       <section class="map-card">
         <h2>Downtown San Diego | Route Safety Map</h2>
 
@@ -44,17 +91,14 @@
             <p><span class="dot orange"></span> Streetlight</p>
             <p><span class="dot red-dot"></span> Crime incident</p>
           </div>
-
         </div>
       </section>
 
       <aside class="sidebar">
         <h3>Select Route</h3>
-
         <div id="route-list"></div>
 
         <h3>Time of Day</h3>
-
         <div class="toggle">
           <button class="active" id="day-btn">Day</button>
           <button id="night-btn">Night</button>
@@ -81,10 +125,11 @@
           <h3>Safety Breakdown</h3>
           <div id="breakdown"></div>
         </section>
-        
       </aside>
+
     </section>
 
+    <!-- BOTTOM: comparison chart -->
     <section class="chart-card">
       <h2>Route Comparison</h2>
       <p>
@@ -93,6 +138,8 @@
       </p>
       <div id="comparison-chart"></div>
     </section>
+
+  </div>
 
   </main>
 
