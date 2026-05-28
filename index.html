@@ -95,15 +95,16 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .inline-toggle .time-icon { font-size: 15px; vertical-align: middle; margin-right: 4px; }
 
 /* ── Time slider (explore) ── */
-.time-slider-wrap { position: relative; height: 36px; border-radius: 18px; background: #e2e8f0; cursor: pointer; overflow: hidden; user-select: none; }
-.time-slider-fill { position: absolute; top: 0; left: 0; width: 50%; height: 100%; border-radius: 18px; background: #fbbf24; transition: all 0.4s ease; }
-.time-slider-wrap.night .time-slider-fill { left: 50%; background: #1e3a5f; }
-.time-slider-labels { position: relative; display: flex; height: 100%; z-index: 1; }
-.time-slider-label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 600; transition: color 0.3s; }
-.time-slider-label.day-label { color: #92400e; }
-.time-slider-label.night-label { color: #64748b; }
-.time-slider-wrap.night .time-slider-label.day-label { color: #64748b; }
-.time-slider-wrap.night .time-slider-label.night-label { color: #e2e8f0; }
+.time-slider-container { position: relative; }
+.time-slider-track { position: relative; height: 32px; border-radius: 16px; background: linear-gradient(to right, #fef3c7 0%, #fbbf24 45%, #1e3a5f 55%, #0f172a 100%); padding: 0 4px; }
+.time-slider-input { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; background: transparent; position: relative; z-index: 2; cursor: pointer; margin: 0; }
+.time-slider-input::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 3px solid #2d3748; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: grab; }
+.time-slider-input::-webkit-slider-thumb:active { cursor: grabbing; }
+.time-slider-ticks { display: flex; justify-content: space-between; padding: 4px 6px 0; }
+.time-slider-tick { font-size: 10px; color: #888; }
+.time-slider-readout { text-align: center; margin-top: 4px; font-size: 13px; font-weight: 600; }
+.time-slider-readout.day { color: #92400e; }
+.time-slider-readout.night { color: #475569; }
 
 /* ── Mode switcher ── */
 .mode-tabs { display: flex; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
@@ -121,11 +122,17 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .nav-point .nav-text.set { color: #1a1a1a; font-weight: 500; }
 .nav-clear { margin-top: 10px; padding: 7px 14px; font-size: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; color: #555; transition: all 0.15s; width: 100%; }
 .nav-clear:hover { background: #f5f5f5; }
-.nav-score-summary { margin-top: 14px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
-.nav-score-summary.risky { background: #fef2f2; border-color: #fecaca; }
-.nav-score-value { font-size: 22px; font-weight: 700; color: #16a34a; }
-.nav-score-summary.risky .nav-score-value { color: #dc2626; }
-.nav-score-label { font-size: 11px; color: #555; margin-top: 2px; }
+.nav-compare-card { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.nav-compare-row { display: flex; align-items: center; padding: 10px 12px; gap: 10px; }
+.nav-compare-row + .nav-compare-row { border-top: 1px solid #e2e8f0; }
+.nav-compare-row.original { background: #f7fafc; }
+.nav-compare-row.alt { background: #f0fdf4; }
+.nav-compare-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.nav-compare-tag.orig { background: #e2e8f0; color: #475569; }
+.nav-compare-tag.safer { background: #bbf7d0; color: #166534; }
+.nav-compare-score { font-size: 18px; font-weight: 700; }
+.nav-compare-detail { font-size: 11px; color: #555; }
+.nav-compare-delta { margin-top: 8px; padding: 8px 12px; font-size: 12px; color: #166534; background: #f0fdf4; border-top: 1px solid #bbf7d0; text-align: center; font-weight: 500; }
 
 /* ── Scroll indicator ── */
 .scroll-cue {
@@ -437,20 +444,24 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
         <ul class="route-list" id="route-list"></ul>
       </div>
       <div id="navigate-panel" class="nav-panel" style="display:none;">
-        <p class="nav-instruction">Click two points on the map to find the safest walking path between them.</p>
-        <div class="nav-point"><div class="nav-dot start"></div><div class="nav-text" id="nav-start-label">Click map to set start</div></div>
-        <div class="nav-point"><div class="nav-dot end"></div><div class="nav-text" id="nav-end-label">Then click to set end</div></div>
-        <button class="nav-clear" id="nav-clear">Clear route</button>
-        <div id="nav-score-box"></div>
+        <p class="nav-instruction">Is there a safer way to walk the same trip? This computes the safest alternative path between the same start and end points.</p>
+        <h3 style="margin-bottom:8px;">Select a trip</h3>
+        <ul class="route-list" id="nav-route-list"></ul>
+        <div id="nav-comparison"></div>
       </div>
       <div>
         <h3>Time of Day</h3>
-        <div class="time-slider-wrap" id="time-slider">
-          <div class="time-slider-fill"></div>
-          <div class="time-slider-labels">
-            <div class="time-slider-label day-label">&#9728; Day</div>
-            <div class="time-slider-label night-label">Night &#9790;</div>
+        <div class="time-slider-container">
+          <div class="time-slider-track">
+            <input type="range" min="6" max="24" value="12" step="1" class="time-slider-input" id="time-slider">
           </div>
+          <div class="time-slider-ticks">
+            <span class="time-slider-tick">6 AM</span>
+            <span class="time-slider-tick">12 PM</span>
+            <span class="time-slider-tick">6 PM</span>
+            <span class="time-slider-tick">12 AM</span>
+          </div>
+          <div class="time-slider-readout day" id="time-readout">&#9728; 12:00 PM (Daytime)</div>
         </div>
       </div>
       <div>
@@ -825,33 +836,34 @@ function updateScrollAnnotations(n) {
   layer.selectAll('*').remove();
 
   if (n === 4) {
-    addAnnotation(layer, [-117.148, 32.711], 'Fewer streetlights →', '#92400e');
+    addAnnotation(layer, [-117.148, 32.711], 'East Village: gaps in lighting', '#92400e');
+    addAnnotation(layer, [-117.172, 32.724], 'Little Italy: well-lit corridors', '#1e40af');
   }
 
   if (n === 5) {
-    addAnnotation(layer, [-117.148, 32.720], '← High crime density', '#b91c1c');
-    addAnnotation(layer, [-117.178, 32.732], 'Low crime ↓', '#1e40af');
+    addAnnotation(layer, [-117.148, 32.720], 'East Village: high crime density', '#b91c1c');
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy: low crime', '#1e40af');
   }
 
   if (n === 6) {
-    addAnnotation(layer, [-117.178, 32.732], 'Safest: 73/100', '#1e40af');
-    addAnnotation(layer, [-117.158, 32.697], 'Lowest: 55/100', '#b91c1c');
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1e40af');
+    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#b91c1c');
   }
 
   if (n === 7) {
     const isNight = state.timeOfDay === 'night';
     if (isNight) {
-      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp improves ↑', '#16a34a');
-      addAnnotation(layer, [-117.148, 32.720], 'East Village worsens ↓', '#dc2626');
-      addAnnotation(layer, [-117.178, 32.732], 'Stable: 72/100', '#2563eb');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: 61 at night (+6)', '#16a34a');
+      addAnnotation(layer, [-117.148, 32.720], 'East Village: riskier after dark', '#dc2626');
+      addAnnotation(layer, [-117.178, 32.732], 'Little Italy: 72, stable', '#2563eb');
     } else {
-      addAnnotation(layer, [-117.178, 32.732], 'Safest: 73/100', '#1d4ed8');
-      addAnnotation(layer, [-117.158, 32.697], 'Lowest: 55/100', '#dc2626');
+      addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1d4ed8');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#dc2626');
     }
   }
 
   if (n === 8) {
-    addAnnotation(layer, [-117.178, 32.732], '★ Safest route', '#1e40af');
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy: safest any time of day', '#1e40af');
   }
 }
 
@@ -943,14 +955,20 @@ function syncTimeToggles() {
   d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
     return d3.select(this).attr('data-time') === state.timeOfDay;
   });
-  document.getElementById('time-slider').classList.toggle('night', state.timeOfDay === 'night');
+  const slider = document.getElementById('time-slider');
+  if (state.timeOfDay === 'night' && +slider.value < 18) slider.value = 21;
+  else if (state.timeOfDay === 'day' && +slider.value >= 18) slider.value = 12;
+  const readout = document.getElementById('time-readout');
+  const icon = state.timeOfDay === 'day' ? '☀' : '☾';
+  const label = state.timeOfDay === 'day' ? 'Daytime' : 'Nighttime';
+  const h = +slider.value;
+  readout.textContent = icon + ' ' + (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 && h < 24 ? 'PM' : 'AM') + ' (' + label + ')';
+  readout.className = 'time-slider-readout ' + state.timeOfDay;
   updateExploreMap();
   updateScorePanel();
   updateComparisonHighlight();
   updateRecommendation();
-  if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
-    runNavRoute();
-  }
+  if (state.mode === 'navigate') updateNavAlternative();
 }
 
 function setupScrollTimeToggle() {
@@ -965,9 +983,7 @@ function setupScrollTimeToggle() {
     updateScorePanel();
     updateComparisonHighlight();
     updateRecommendation();
-    if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
-      runNavRoute();
-    }
+    if (state.mode === 'navigate') updateNavAlternative();
   });
 }
 
@@ -1154,13 +1170,13 @@ function setupModeTabs() {
       document.getElementById('navigate-panel').style.display = mode === 'navigate' ? '' : 'none';
       document.getElementById('score-panel').style.display = mode === 'suggested' ? '' : 'none';
       if (mode === 'suggested') {
-        clearNavRoute();
+        d3.select('#explore-map-svg').selectAll('.nav-route').remove();
+        d3.select('#explore-map-svg').selectAll('.nav-marker').remove();
         updateExploreMap();
         updateExploreMarkers();
       } else {
-        d3.select('#explore-map-svg').selectAll('.explore-route').attr('stroke-opacity', 0.2).attr('stroke-width', 2);
-        d3.select('#explore-map-svg').selectAll('.explore-halo').attr('stroke-width', 0);
-        d3.select('#explore-map-svg').selectAll('.explore-marker').remove();
+        updateExploreMap();
+        updateNavAlternative();
       }
     });
   });
@@ -1168,125 +1184,132 @@ function setupModeTabs() {
 
 function setupTimeSlider() {
   const slider = document.getElementById('time-slider');
-  slider.addEventListener('click', () => {
-    const newTime = state.timeOfDay === 'day' ? 'night' : 'day';
-    state.timeOfDay = newTime;
-    slider.classList.toggle('night', newTime === 'night');
-    d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
-      return d3.select(this).attr('data-time') === newTime;
-    });
-    if (state.currentScene === 7) setScene(7);
-    updateExploreMap();
-    updateScorePanel();
-    updateComparisonHighlight();
-    updateRecommendation();
-    if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
-      runNavRoute();
+  const readout = document.getElementById('time-readout');
+  function formatHour(h) {
+    const hr = h > 12 ? h - 12 : h;
+    const ampm = h >= 12 && h < 24 ? 'PM' : 'AM';
+    return hr + ':00 ' + ampm;
+  }
+  function updateFromSlider() {
+    const hour = +slider.value;
+    const newTime = (hour >= 6 && hour < 18) ? 'day' : 'night';
+    const icon = newTime === 'day' ? '☀' : '☾';
+    const label = newTime === 'day' ? 'Daytime' : 'Nighttime';
+    readout.textContent = icon + ' ' + formatHour(hour) + ' (' + label + ')';
+    readout.className = 'time-slider-readout ' + newTime;
+    if (newTime !== state.timeOfDay) {
+      state.timeOfDay = newTime;
+      d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
+        return d3.select(this).attr('data-time') === newTime;
+      });
+      if (state.currentScene === 7) setScene(7);
+      updateExploreMap();
+      updateScorePanel();
+      updateComparisonHighlight();
+      updateRecommendation();
+      if (state.mode === 'navigate') updateNavAlternative();
     }
-  });
+  }
+  slider.addEventListener('input', updateFromSlider);
 }
 
 function setupNavigateMode() {
-  const svg = d3.select('#explore-map-svg');
-  svg.on('click', function(event) {
-    if (state.mode !== 'navigate') return;
-    const [mx, my] = d3.pointer(event);
-    const lngLat = exploreProjection.invert([mx, my]);
-    if (!lngLat) return;
-    const nodeIdx = findNearestNode(lngLat);
-    const nodeCoords = graph.nodes[nodeIdx];
-
-    if (state.navStartIdx < 0) {
-      state.navStartIdx = nodeIdx;
-      state.navStart = nodeCoords;
-      document.getElementById('nav-start-label').textContent = 'Start set';
-      document.getElementById('nav-start-label').classList.add('set');
-      drawNavMarkers();
-    } else if (state.navEndIdx < 0) {
-      state.navEndIdx = nodeIdx;
-      state.navEnd = nodeCoords;
-      document.getElementById('nav-end-label').textContent = 'End set';
-      document.getElementById('nav-end-label').classList.add('set');
-      drawNavMarkers();
-      runNavRoute();
-    }
+  const list = d3.select('#nav-route-list');
+  const routeNames = Object.keys(data.routes);
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    const li = list.append('li')
+      .classed('active', i === 0)
+      .on('click', () => selectNavRoute(i));
+    li.append('div').attr('class', 'route-dot').style('background', route.color);
+    li.append('span').text(name);
   });
-
-  document.getElementById('nav-clear').addEventListener('click', () => {
-    clearNavRoute();
-  });
+  updateNavAlternative();
 }
 
-function clearNavRoute() {
-  state.navStart = null;
-  state.navEnd = null;
-  state.navStartIdx = -1;
-  state.navEndIdx = -1;
-  document.getElementById('nav-start-label').textContent = 'Click map to set start';
-  document.getElementById('nav-start-label').classList.remove('set');
-  document.getElementById('nav-end-label').textContent = 'Then click to set end';
-  document.getElementById('nav-end-label').classList.remove('set');
-  document.getElementById('nav-score-box').innerHTML = '';
-  const svg = d3.select('#explore-map-svg');
-  svg.selectAll('.nav-marker').remove();
-  svg.selectAll('.nav-route').remove();
+function selectNavRoute(i) {
+  state.selectedRoute = i;
+  d3.select('#nav-route-list').selectAll('li').classed('active', (_, j) => j === i);
+  d3.select('#route-list').selectAll('li').classed('active', (_, j) => j === i);
+  updateExploreMap();
+  updateScorePanel();
+  updateComparisonHighlight();
+  updateNavAlternative();
 }
 
-function drawNavMarkers() {
-  const svg = d3.select('#explore-map-svg');
-  svg.selectAll('.nav-marker').remove();
-  const layer = svg.select('#explore-routes');
-  if (state.navStart) {
-    const [x, y] = exploreProjection(state.navStart);
-    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 9).attr('fill', '#16a34a').attr('class', 'nav-marker');
-    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 4).attr('fill', '#fff').attr('class', 'nav-marker');
-    layer.append('text').attr('x', x + 12).attr('y', y + 5).text('Start')
-      .attr('font-size', '13px').attr('font-weight', '700').attr('fill', '#16a34a')
-      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
-      .attr('class', 'nav-marker');
-  }
-  if (state.navEnd) {
-    const [x, y] = exploreProjection(state.navEnd);
-    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 9).attr('fill', '#dc2626').attr('class', 'nav-marker');
-    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 4).attr('fill', '#fff').attr('class', 'nav-marker');
-    layer.append('text').attr('x', x + 12).attr('y', y + 5).text('End')
-      .attr('font-size', '13px').attr('font-weight', '700').attr('fill', '#dc2626')
-      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
-      .attr('class', 'nav-marker');
-  }
-}
-
-function runNavRoute() {
-  const result = dijkstraSafest(state.navStartIdx, state.navEndIdx);
+function updateNavAlternative() {
   const svg = d3.select('#explore-map-svg');
   svg.selectAll('.nav-route').remove();
+  svg.selectAll('.nav-marker').remove();
 
-  if (!result) {
-    document.getElementById('nav-score-box').innerHTML = '<div style="padding:8px;font-size:12px;color:#dc2626;">No path found between these points.</div>';
+  const routeNames = Object.keys(data.routes);
+  const route = data.routes[routeNames[state.selectedRoute]];
+  const startCoords = route.waypoints[0];
+  const endCoords = route.waypoints[route.waypoints.length - 1];
+  const startIdx = findNearestNode(startCoords);
+  const endIdx = findNearestNode(endCoords);
+
+  const alt = dijkstraSafest(startIdx, endIdx);
+  const origScore = Math.round(route.scores[state.timeOfDay] * 100);
+  const origDist = Math.round(route.waypoints.reduce((sum, pt, i) => {
+    if (i === 0) return 0;
+    const prev = route.waypoints[i - 1];
+    const dx = (pt[0] - prev[0]) * 111320 * Math.cos(pt[1] * Math.PI / 180);
+    const dy = (pt[1] - prev[1]) * 110540;
+    return sum + Math.sqrt(dx * dx + dy * dy);
+  }, 0));
+  const origMin = Math.round(origDist / 83);
+
+  const container = document.getElementById('nav-comparison');
+  if (!alt) {
+    container.innerHTML = '<div style="padding:8px;font-size:12px;color:#888;">No alternative found.</div>';
     return;
   }
 
-  const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
-  const routeLayer = svg.select('#explore-routes');
-  routeLayer.insert('path', '.nav-marker')
-    .datum(result.path).attr('d', line)
-    .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 10)
-    .attr('stroke-linecap', 'round').attr('class', 'nav-route');
-  routeLayer.insert('path', '.nav-marker')
-    .datum(result.path).attr('d', line)
-    .attr('fill', 'none').attr('stroke', '#16a34a').attr('stroke-width', 5)
-    .attr('stroke-linecap', 'round').attr('class', 'nav-route')
-    .attr('stroke-dasharray', function() { return this.getTotalLength(); })
-    .attr('stroke-dashoffset', function() { return this.getTotalLength(); })
-    .transition().duration(800).attr('stroke-dashoffset', 0);
+  const altScore = Math.round(alt.avgScore * 100);
+  const altDist = Math.round(alt.totalLen);
+  const altMin = Math.round(altDist / 83);
+  const scoreDelta = altScore - origScore;
+  const timeDelta = altMin - origMin;
 
-  const score = Math.round(result.avgScore * 100);
-  const dist = Math.round(result.totalLen);
-  const risky = score < 60;
-  document.getElementById('nav-score-box').innerHTML =
-    `<div class="nav-score-summary${risky ? ' risky' : ''}">
-      <div class="nav-score-value">${score}/100</div>
-      <div class="nav-score-label">${getQualLabel(result.avgScore)} &middot; ${dist}m &middot; ${state.timeOfDay}</div>
+  if (alt.path.length > 1) {
+    const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
+    const routeLayer = svg.select('#explore-routes');
+    routeLayer.append('path').datum(alt.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 9)
+      .attr('stroke-linecap', 'round').attr('class', 'nav-route').style('opacity', 0.8);
+    routeLayer.append('path').datum(alt.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', '#16a34a').attr('stroke-width', 4)
+      .attr('stroke-linecap', 'round').attr('stroke-dasharray', '8,5')
+      .attr('class', 'nav-route');
+
+    const startPt = exploreProjection(alt.path[0]);
+    const endPt = exploreProjection(alt.path[alt.path.length - 1]);
+    [{ pt: startPt, c: '#16a34a' }, { pt: endPt, c: '#dc2626' }].forEach(({ pt, c }) => {
+      routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 7).attr('fill', c).attr('class', 'nav-marker');
+      routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3).attr('fill', '#fff').attr('class', 'nav-marker');
+    });
+  }
+
+  const sign = scoreDelta > 0 ? '+' : '';
+  const timeSign = timeDelta > 0 ? '+' : '';
+  const hasBenefit = scoreDelta > 2;
+  container.innerHTML =
+    `<div class="nav-compare-card">
+      <div class="nav-compare-row original">
+        <span class="nav-compare-tag orig">Direct</span>
+        <span class="nav-compare-score">${origScore}</span>
+        <span class="nav-compare-detail">${getQualLabel(route.scores[state.timeOfDay])} · ~${origMin} min</span>
+      </div>
+      <div class="nav-compare-row alt">
+        <span class="nav-compare-tag safer">Safest</span>
+        <span class="nav-compare-score">${altScore}</span>
+        <span class="nav-compare-detail">${getQualLabel(alt.avgScore)} · ~${altMin} min</span>
+      </div>
+      ${hasBenefit
+        ? `<div class="nav-compare-delta">${sign}${scoreDelta} safety points for ${timeSign}${timeDelta} min</div>`
+        : `<div class="nav-compare-delta" style="color:#475569;background:#f7fafc;border-color:#e2e8f0;">This is already close to the safest path</div>`
+      }
     </div>`;
 }
 
