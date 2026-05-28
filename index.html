@@ -11,7 +11,7 @@
 html { scroll-behavior: smooth; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; line-height: 1.6; }
 
-header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 16px 40px; }
+header { background: linear-gradient(135deg, #fff 0%, #f7f6f2 100%); border-bottom: 2px solid #D97706; padding: 16px 40px; }
 header h1 { font-size: 22px; font-weight: 600; }
 header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 
@@ -303,8 +303,9 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
   padding: 14px 18px;
   border: 1px solid #e0e0e0;
   background: #fff;
-  transition: all 0.4s ease;
+  transition: all 0.3s ease;
 }
+.rec-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .rec-card.safest { border-left: 4px solid #2563eb; }
 .rec-card.avoid { border-left: 4px solid #dc2626; }
 .rec-card.shift { border-left: 4px solid #16a34a; }
@@ -318,6 +319,8 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 /* ── Key findings ── */
 .findings-row { display: flex; gap: 20px; margin-bottom: 30px; }
 .finding-card { flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; border-top: 3px solid #D97706; opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.finding-card:nth-child(2) { transition-delay: 0.15s; }
+.finding-card:nth-child(3) { transition-delay: 0.3s; }
 .finding-card.visible { opacity: 1; transform: translateY(0); }
 .finding-number { font-size: 36px; font-weight: 700; color: #D97706; line-height: 1; }
 .finding-label { font-size: 13px; color: #555; margin-top: 8px; line-height: 1.4; }
