@@ -1530,6 +1530,7 @@ function setupTimeSlider() {
     const newTime = (hour >= 6 && hour < 18) ? 'day' : 'night';
     updateSliderReadout();
     updateExploreMap();
+    updateRecommendation();
     if (newTime !== state.timeOfDay) {
       state.timeOfDay = newTime;
       d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
@@ -1705,8 +1706,12 @@ function updateRecommendation() {
   }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   const bigShift = shifts[0];
 
-  const timeLabel = state.timeOfDay === 'day' ? 'Safest route (daytime)' : 'Safest route (nighttime)';
-  const avoidLabel = state.timeOfDay === 'day' ? 'Highest risk (daytime)' : 'Highest risk (nighttime)';
+  const h = +document.getElementById('time-slider').value;
+  const hr = h > 12 ? h - 12 : h;
+  const ampm = (h >= 12 && h < 24) ? 'PM' : 'AM';
+  const timeStr = hr + ' ' + ampm;
+  const timeLabel = 'Safest route at ' + timeStr;
+  const avoidLabel = 'Highest risk at ' + timeStr;
   document.querySelector('.rec-card.safest .rec-label').textContent = timeLabel;
   document.querySelector('.rec-card.avoid .rec-label').textContent = avoidLabel;
   document.getElementById('rec-safest-name').textContent = safest.name;
