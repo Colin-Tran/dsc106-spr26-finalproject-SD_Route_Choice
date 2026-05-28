@@ -106,6 +106,7 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .time-slider-input::-webkit-slider-thumb:active { cursor: grabbing; }
 .time-slider-ticks { display: flex; justify-content: space-between; padding: 4px 6px 0; }
 .time-slider-tick { font-size: 10px; color: #888; }
+.time-slider-tick.boundary { color: #D97706; font-weight: 600; }
 .time-slider-readout { text-align: center; margin-top: 4px; font-size: 13px; font-weight: 600; }
 .time-slider-readout.day { color: #92400e; }
 .time-slider-readout.night { color: #475569; }
@@ -492,7 +493,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
           <div class="time-slider-ticks">
             <span class="time-slider-tick">6 AM</span>
             <span class="time-slider-tick">12 PM</span>
-            <span class="time-slider-tick">6 PM</span>
+            <span class="time-slider-tick boundary">6 PM</span>
             <span class="time-slider-tick">12 AM</span>
           </div>
           <div class="time-slider-readout day" id="time-readout">&#9728; 12:00 PM (Daytime)</div>
