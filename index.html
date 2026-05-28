@@ -114,8 +114,9 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 
 /* ── Mode switcher ── */
 .mode-tabs { display: flex; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
-.mode-tab { flex: 1; padding: 8px; font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; border: none; background: #fff; color: #555; transition: all 0.15s; }
-.mode-tab.active { background: #2d3748; color: #fff; }
+.mode-tab { flex: 1; padding: 8px; font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; border: none; background: #fff; color: #555; transition: all 0.2s ease; }
+.mode-tab.active { background: #D97706; color: #fff; }
+.mode-tab:hover:not(.active) { background: #f7f6f2; }
 
 /* ── Navigate mode ── */
 .nav-panel { font-size: 13px; color: #444; }
@@ -513,7 +514,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
         <p style="font-size:11px;color:#888;margin-top:6px;">Streetlights and crime incidents update automatically with time of day.</p>
       </div>
       <div class="score-panel" id="score-panel">
-        <h4>Safety Breakdown</h4>
+        <h4 id="score-panel-title">Safety Breakdown</h4>
         <div id="score-bars"></div>
       </div>
     </div>
@@ -1730,10 +1731,10 @@ function updateScorePanel() {
     { key: 'traffic', label: 'Walkable Streets', color: '#3b82f6' },
     { key: state.timeOfDay, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
   ];
+  const shortName = routeNames[state.selectedRoute].split(' to ')[0];
+  document.getElementById('score-panel-title').textContent = shortName + ' (#' + rank + ' of ' + routeNames.length + ')';
   const container = d3.select('#score-bars');
   container.html('');
-  container.append('div').style('font-size', '11px').style('color', '#888').style('margin-bottom', '8px')
-    .text('#' + rank + ' of ' + routeNames.length + ' routes');
   categories.forEach(cat => {
     const val = route.scores[cat.key];
     const bar = container.append('div').attr('class', 'score-bar');
