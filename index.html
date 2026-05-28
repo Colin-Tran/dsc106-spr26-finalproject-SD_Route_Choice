@@ -876,8 +876,8 @@ function setScene(n) {
       .attr('stroke-opacity', 0.75);
   }
 
-  // Streetlights — staggered cascade
-  const showLights = (n === 4);
+  // Streetlights — scene 4 cascade + scene 7 night glow
+  const showLights = (n === 4) || (n === 7 && state.timeOfDay === 'night');
   const lightData = showLights && data.streetlights ? data.streetlights : [];
   svg.select('#scroll-lights').selectAll('circle')
     .data(lightData, (d, i) => i)
