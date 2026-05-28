@@ -853,7 +853,7 @@ function setScene(n) {
       .attr('stroke-opacity', 0.75);
   }
 
-  // Streetlights
+  // Streetlights — staggered cascade
   const showLights = (n === 4);
   const lightData = showLights && data.streetlights ? data.streetlights : [];
   svg.select('#scroll-lights').selectAll('circle')
@@ -865,7 +865,7 @@ function setScene(n) {
       update => update,
       exit => exit.transition(t).attr('opacity', 0).remove()
     )
-    .transition(t).attr('opacity', 0.5);
+    .transition().delay((d, i) => i * 1.5).duration(400).attr('opacity', 0.5);
 
   // Crime
   const showCrime = (n === 5);
