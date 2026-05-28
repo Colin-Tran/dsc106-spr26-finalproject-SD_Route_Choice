@@ -247,6 +247,12 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 
 @keyframes crime-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
 .crime-dot-night { animation: crime-pulse 2.5s ease-in-out infinite; }
+
+/* ── Zoom controls ── */
+.zoom-controls { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+.zoom-btn { width: 32px; height: 32px; border: 1px solid #d4d4d4; border-radius: 6px; background: rgba(255,255,255,0.92); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #333; transition: all 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.zoom-btn:hover { background: #fff; border-color: #999; }
+.zoom-btn.reset { font-size: 15px; }
 .controls { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .controls h3 { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
 .route-list { list-style: none; }
@@ -1071,9 +1077,12 @@ function drawExploreMap(colorScale) {
   const geoFeature = { type: "Feature", geometry: { type: "MultiPoint", coordinates: [[b.lng[0], b.lat[0]], [b.lng[1], b.lat[0]], [b.lng[1], b.lat[1]], [b.lng[0], b.lat[1]]] }};
   exploreProjection = d3.geoMercator().fitExtent([[20, 20], [width - 20, height - 20]], geoFeature);
 
+  // Content group for zoom/pan
+  const content = svg.append('g').attr('id', 'explore-content');
+
   // Water / San Diego Bay
   const waterPath = COASTLINE.map(c => exploreProjection(c));
-  svg.append('polygon')
+  content.append('polygon')
     .attr('points', waterPath.map(p => p.join(',')).join(' '))
     .attr('fill', '#bfdbfe').attr('id', 'explore-water');
 
@@ -1083,7 +1092,7 @@ function drawExploreMap(colorScale) {
   defs.append('clipPath').attr('id', 'explore-land-clip')
     .append('polygon').attr('points', expLand.map(p => p.join(',')).join(' '));
 
-  svg.append('g').attr('id', 'explore-edges').attr('clip-path', 'url(#explore-land-clip)')
+  content.append('g').attr('id', 'explore-edges').attr('clip-path', 'url(#explore-land-clip)')
     .selectAll('line').data(data.edges).join('line')
     .attr('x1', d => exploreProjection(d.from)[0])
     .attr('y1', d => exploreProjection(d.from)[1])
@@ -1107,10 +1116,10 @@ function drawExploreMap(colorScale) {
       d3.select(this).attr('stroke-width', null).attr('stroke-opacity', null);
     });
 
-  svg.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
-  svg.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
+  content.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
+  content.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
 
-  const routeLayer = svg.append('g').attr('id', 'explore-routes');
+  const routeLayer = content.append('g').attr('id', 'explore-routes');
   const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
   const routeNames = Object.keys(data.routes);
   const container = document.getElementById('explore-map-container');
@@ -1139,7 +1148,7 @@ function drawExploreMap(colorScale) {
   });
 
   // Labels
-  const labels = svg.append('g');
+  const labels = content.append('g');
   [
     { name: 'Little Italy', coords: [-117.1720, 32.7250], anchor: 'end' },
     { name: 'Gaslamp Qtr', coords: [-117.1620, 32.7110], anchor: 'end' },
@@ -1156,6 +1165,26 @@ function drawExploreMap(colorScale) {
 
   // Endpoint markers
   updateExploreMarkers();
+
+  // Zoom/pan
+  const zoom = d3.zoom()
+    .scaleExtent([1, 6])
+    .translateExtent([[0, 0], [width, height]])
+    .on('zoom', (event) => {
+      content.attr('transform', event.transform);
+    });
+  svg.call(zoom);
+  svg.on('dblclick.zoom', null);
+
+  // Zoom controls
+  const zoomContainer = d3.select('#explore-map-container');
+  const zoomBtns = zoomContainer.append('div').attr('class', 'zoom-controls');
+  zoomBtns.append('button').attr('class', 'zoom-btn').text('+')
+    .on('click', () => svg.transition().duration(300).call(zoom.scaleBy, 1.5));
+  zoomBtns.append('button').attr('class', 'zoom-btn').text('–')
+    .on('click', () => svg.transition().duration(300).call(zoom.scaleBy, 0.67));
+  zoomBtns.append('button').attr('class', 'zoom-btn reset').text('↺')
+    .on('click', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
 }
 
 function updateExploreMap() {
