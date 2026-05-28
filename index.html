@@ -1019,6 +1019,18 @@ function setScene(n) {
   svg.select('#scroll-labels').selectAll('text').transition(t)
     .attr('fill', isNight ? '#e2e8f0' : '#222')
     .attr('stroke', isNight ? '#1a202c' : '#fff');
+
+  // Time indicator on scene 7
+  svg.selectAll('.time-indicator').remove();
+  if (n === 7) {
+    const icon = isNight ? '☾' : '☀';
+    const color = isNight ? '#fbbf24' : '#f59e0b';
+    svg.append('text').attr('class', 'time-indicator')
+      .attr('x', 50).attr('y', 60).text(icon)
+      .attr('font-size', '32px').attr('fill', color)
+      .style('pointer-events', 'none').style('opacity', 0)
+      .transition().duration(400).style('opacity', 0.6);
+  }
 }
 
 function addAnnotation(layer, coords, text, color) {
