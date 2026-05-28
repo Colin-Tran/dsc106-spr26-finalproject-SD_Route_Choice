@@ -235,8 +235,14 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
   gap: 20px;
   margin-bottom: 30px;
 }
-.explore-map { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; position: relative; }
+.explore-map { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; position: relative; transition: background 0.8s ease, border-color 0.8s ease; }
+.explore-map.night-mode { background: #0f172a; border-color: #1e293b; }
 #explore-map-svg { width: 100%; height: 760px; }
+
+@keyframes pulse-glow { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes crime-pulse { 0%,100% { r: 3; opacity: 0.5; } 50% { r: 5; opacity: 0.8; } }
+.streetlight-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.crime-dot-night { animation: crime-pulse 2s ease-in-out infinite; }
 .controls { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .controls h3 { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
 .route-list { list-style: none; }
@@ -467,10 +473,9 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       <div>
         <h3>Map Layers</h3>
         <div class="toggle-group">
-          <div class="toggle-row"><span>Street safety</span><div class="toggle-btn on" id="tog-edges" role="switch" tabindex="0" aria-label="Toggle street safety layer"></div></div>
-          <div class="toggle-row"><span>Streetlights</span><div class="toggle-btn" id="tog-lights" role="switch" tabindex="0" aria-label="Toggle streetlights"></div></div>
-          <div class="toggle-row"><span>Crime incidents</span><div class="toggle-btn" id="tog-crime" role="switch" tabindex="0" aria-label="Toggle crime incidents"></div></div>
+          <div class="toggle-row"><span>Street safety colors</span><div class="toggle-btn on" id="tog-edges" role="switch" tabindex="0" aria-label="Toggle street safety layer"></div></div>
         </div>
+        <p style="font-size:11px;color:#888;margin-top:6px;">Streetlights and crime incidents update automatically with time of day.</p>
       </div>
       <div class="score-panel" id="score-panel">
         <h4>Safety Breakdown</h4>
@@ -505,7 +510,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 <footer>DSC 106 | Data Visualization, Spring 2026 | UC San Diego</footer>
 
 <script>
-const state = { selectedRoute: 0, timeOfDay: 'day', showEdges: true, showLights: false, showCrime: false, currentScene: 0, mode: 'suggested', navStart: null, navEnd: null, navStartIdx: -1, navEndIdx: -1 };
+const state = { selectedRoute: 0, timeOfDay: 'day', showEdges: true, currentScene: 0, mode: 'suggested' };
 let data = null;
 let scrollProjection = null;
 let exploreProjection = null;
@@ -958,17 +963,24 @@ function syncTimeToggles() {
   const slider = document.getElementById('time-slider');
   if (state.timeOfDay === 'night' && +slider.value < 18) slider.value = 21;
   else if (state.timeOfDay === 'day' && +slider.value >= 18) slider.value = 12;
-  const readout = document.getElementById('time-readout');
-  const icon = state.timeOfDay === 'day' ? '☀' : '☾';
-  const label = state.timeOfDay === 'day' ? 'Daytime' : 'Nighttime';
-  const h = +slider.value;
-  readout.textContent = icon + ' ' + (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 && h < 24 ? 'PM' : 'AM') + ' (' + label + ')';
-  readout.className = 'time-slider-readout ' + state.timeOfDay;
+  updateSliderReadout();
   updateExploreMap();
   updateScorePanel();
   updateComparisonHighlight();
   updateRecommendation();
   if (state.mode === 'navigate') updateNavAlternative();
+}
+
+function updateSliderReadout() {
+  const slider = document.getElementById('time-slider');
+  const readout = document.getElementById('time-readout');
+  const h = +slider.value;
+  const icon = state.timeOfDay === 'day' ? '☀' : '☾';
+  const label = state.timeOfDay === 'day' ? 'Daytime' : 'Nighttime';
+  const hr = h > 12 ? h - 12 : h;
+  const ampm = (h >= 12 && h < 24) ? 'PM' : 'AM';
+  readout.textContent = icon + ' ' + hr + ':00 ' + ampm + ' (' + label + ')';
+  readout.className = 'time-slider-readout ' + state.timeOfDay;
 }
 
 function setupScrollTimeToggle() {
@@ -977,7 +989,9 @@ function setupScrollTimeToggle() {
     state.timeOfDay = time;
     d3.select('#scroll-time-toggle').selectAll('button').classed('active', false);
     d3.select(this).classed('active', true);
-    document.getElementById('time-slider').classList.toggle('night', time === 'night');
+    const slider = document.getElementById('time-slider');
+    slider.value = time === 'night' ? 21 : 12;
+    updateSliderReadout();
     if (state.currentScene === 7) setScene(7);
     updateExploreMap();
     updateScorePanel();
@@ -996,6 +1010,14 @@ function drawExploreMap(colorScale) {
   const width = 800;
   const height = 760;
   svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+  const defs = svg.append('defs');
+  const glow = defs.append('filter').attr('id', 'light-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+  glow.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
+  glow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
+  const edgeGlow = defs.append('filter').attr('id', 'edge-glow').attr('x', '-10%').attr('y', '-10%').attr('width', '120%').attr('height', '120%');
+  edgeGlow.append('feGaussianBlur').attr('stdDeviation', '1.5').attr('result', 'blur');
+  edgeGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
 
   const b = data.bounds;
   const geoFeature = { type: "Feature", geometry: { type: "MultiPoint", coordinates: [[b.lng[0], b.lat[0]], [b.lng[1], b.lat[0]], [b.lng[1], b.lat[1]], [b.lng[0], b.lat[1]]] }};
@@ -1063,39 +1085,60 @@ function drawExploreMap(colorScale) {
 }
 
 function updateExploreMap() {
+  const isNight = state.timeOfDay === 'night';
   const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
   const svg = d3.select('#explore-map-svg');
-  const t = d3.transition().duration(400);
+  const t = d3.transition().duration(600);
+  const container = document.getElementById('explore-map-container');
+  container.classList.toggle('night-mode', isNight);
 
+  // Edges: glow at night, brighter contrast
   svg.selectAll('.explore-edge').transition(t)
-    .attr('stroke', d => colorScale(state.timeOfDay === 'day' ? d.score_day : d.score_night))
-    .attr('stroke-opacity', state.showEdges ? 0.65 : 0);
+    .attr('stroke', d => colorScale(isNight ? d.score_night : d.score_day))
+    .attr('stroke-opacity', state.showEdges ? (isNight ? 0.8 : 0.65) : 0)
+    .attr('stroke-width', isNight ? 3 : 2.5);
+  svg.select('#explore-edges').attr('filter', isNight ? 'url(#edge-glow)' : null);
 
+  // Routes
   svg.selectAll('.explore-route')
     .attr('stroke-width', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 6 : 3.5; })
     .attr('stroke-opacity', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 1 : 0.45; });
   svg.selectAll('.explore-halo')
     .attr('stroke-width', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 10 : 0; });
 
-  // Layers
-  const lightData = state.showLights && data.streetlights ? data.streetlights : [];
+  // Streetlights: always visible, glow at night
+  const lightData = data.streetlights || [];
   svg.select('#explore-lights').selectAll('circle')
     .data(lightData, (d, i) => i)
     .join('circle')
     .attr('cx', d => exploreProjection(d)[0]).attr('cy', d => exploreProjection(d)[1])
-    .attr('r', 3).attr('fill', '#f59e0b').attr('opacity', 0.5);
+    .attr('r', isNight ? 5 : 2)
+    .attr('fill', '#fbbf24')
+    .attr('opacity', isNight ? 0.7 : 0.15)
+    .attr('filter', isNight ? 'url(#light-glow)' : null)
+    .attr('class', isNight ? 'streetlight-glow' : '');
 
-  const crimeData = state.showCrime && data.crime
+  // Crime: always visible, filtered by time, pulses at night
+  const crimeFiltered = data.crime
     ? data.crime.filter(c => {
-        const isNight = c.hour >= 18 || c.hour < 6;
-        return (state.timeOfDay === 'night' && isNight) || (state.timeOfDay === 'day' && !isNight);
+        const nightCrime = c.hour >= 18 || c.hour < 6;
+        return (isNight && nightCrime) || (!isNight && !nightCrime);
       })
     : [];
   svg.select('#explore-crime').selectAll('circle')
-    .data(crimeData, (d, i) => i)
+    .data(crimeFiltered, (d, i) => i)
     .join('circle')
     .attr('cx', d => exploreProjection(d.coords)[0]).attr('cy', d => exploreProjection(d.coords)[1])
-    .attr('r', 3).attr('fill', '#ef4444').attr('opacity', 0.4);
+    .attr('r', 3).attr('fill', isNight ? '#f87171' : '#ef4444')
+    .attr('opacity', isNight ? 0.6 : 0.3)
+    .attr('class', isNight ? 'crime-dot-night' : '');
+
+  // Labels: light text at night
+  svg.selectAll('text').filter(function() {
+    return !d3.select(this).classed('explore-marker') && !d3.select(this).classed('nav-marker');
+  }).transition(t)
+    .attr('fill', isNight ? '#cbd5e0' : '#222')
+    .attr('stroke', isNight ? '#0f172a' : '#fff');
 
   updateExploreMarkers();
 }
@@ -1143,21 +1186,17 @@ function selectRoute(i) {
 }
 
 function buildExploreToggles() {
-  ['edges', 'lights', 'crime'].forEach(key => {
-    d3.select('#tog-' + key)
-      .on('click', function() {
-        const el = d3.select(this);
-        const isOn = el.classed('on');
-        el.classed('on', !isOn).attr('aria-checked', !isOn ? 'true' : 'false');
-        if (key === 'edges') state.showEdges = !isOn;
-        else if (key === 'lights') state.showLights = !isOn;
-        else state.showCrime = !isOn;
-        updateExploreMap();
-      })
-      .on('keydown', function(event) {
-        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); d3.select(this).dispatch('click'); }
-      });
-  });
+  d3.select('#tog-edges')
+    .on('click', function() {
+      const el = d3.select(this);
+      const isOn = el.classed('on');
+      el.classed('on', !isOn);
+      state.showEdges = !isOn;
+      updateExploreMap();
+    })
+    .on('keydown', function(event) {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); d3.select(this).dispatch('click'); }
+    });
 }
 
 function setupModeTabs() {
@@ -1184,19 +1223,10 @@ function setupModeTabs() {
 
 function setupTimeSlider() {
   const slider = document.getElementById('time-slider');
-  const readout = document.getElementById('time-readout');
-  function formatHour(h) {
-    const hr = h > 12 ? h - 12 : h;
-    const ampm = h >= 12 && h < 24 ? 'PM' : 'AM';
-    return hr + ':00 ' + ampm;
-  }
-  function updateFromSlider() {
+  slider.addEventListener('input', function() {
     const hour = +slider.value;
     const newTime = (hour >= 6 && hour < 18) ? 'day' : 'night';
-    const icon = newTime === 'day' ? '☀' : '☾';
-    const label = newTime === 'day' ? 'Daytime' : 'Nighttime';
-    readout.textContent = icon + ' ' + formatHour(hour) + ' (' + label + ')';
-    readout.className = 'time-slider-readout ' + newTime;
+    updateSliderReadout();
     if (newTime !== state.timeOfDay) {
       state.timeOfDay = newTime;
       d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
@@ -1209,8 +1239,7 @@ function setupTimeSlider() {
       updateRecommendation();
       if (state.mode === 'navigate') updateNavAlternative();
     }
-  }
-  slider.addEventListener('input', updateFromSlider);
+  });
 }
 
 function setupNavigateMode() {
