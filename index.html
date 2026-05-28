@@ -50,17 +50,17 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 24px 28px;
-  margin-bottom: 70vh;
+  padding: 16px 20px;
+  margin-bottom: 75vh;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   opacity: 0.3;
   transition: opacity 0.4s ease;
+  max-width: 320px;
 }
 .step.is-active { opacity: 1; }
-.step h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-.step p { font-size: 15px; color: #333; margin-bottom: 10px; }
+.step h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.step p { font-size: 14px; color: #333; margin-bottom: 8px; line-height: 1.5; }
 .step p:last-child { margin-bottom: 0; }
-.step .scene-note { font-size: 12px; color: #999; font-style: italic; margin-top: 8px; }
 
 /* ── Formula overlay (scene 2) ── */
 .formula-overlay {
@@ -352,61 +352,46 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   <div class="steps-container">
     <div class="step" data-scene="1">
       <h3>The Question</h3>
-      <p>You leave Petco Park after a night game. Do you cut through East Village or loop around through the Gaslamp? It feels like a gut call, but the data says one choice is 18 points safer than the other.</p>
-      <p>We scored every street segment in downtown San Diego using three public datasets and mapped five walking routes. Scroll to see how the safety picture builds up, one layer at a time.</p>
+      <p>You leave Petco Park after a night game. Do you cut through East Village or loop through the Gaslamp? The data says one choice is 18 points safer. Scroll to see why.</p>
     </div>
 
     <div class="step" data-scene="2">
       <h3>How We Measure Safety</h3>
-      <p>We built a composite safety score for each of the 5,500 street segments in downtown. The score combines three inputs from public data: crime incident density, the EPA's walkability index, and infrastructure quality (streetlights and road type).</p>
-      <p>Crime gets the highest weight because it varies the most across space. The formula also changes between day and night, giving street lighting more weight after dark when visibility matters most.</p>
+      <p>Each of the 5,500 street segments gets a composite score from three public datasets. See the formula on the map.</p>
     </div>
 
     <div class="step" data-scene="3">
-      <h3>Layer 1: Walkable Streets</h3>
-      <p>Think about the last street you enjoyed walking on. Short blocks so you can cross easily. Coffee shops, restaurants, and storefronts at eye level instead of blank walls and parking lots. A bus stop within a few minutes.</p>
-      <p>Downtown San Diego has all of that nearly everywhere. The map is almost entirely blue because every block here is above average for walking comfort. If this were the only thing that mattered, every route would be equally safe.</p>
-      <p class="scene-note">Source: EPA National Walkability Index, which scores each area on how easy it is to walk based on block size, nearby shops, and transit access.</p>
+      <h3>Walkable Streets</h3>
+      <p>Short blocks, shops at street level, bus stops nearby. Downtown has all of this everywhere. The map is almost entirely blue. If this were all that mattered, every route would be equally safe.</p>
     </div>
 
     <div class="step" data-scene="4">
-      <h3>Layer 2: Lighting &amp; Roads</h3>
-      <p>How well-lit is the street you are walking on? Is it a wide boulevard with sidewalks, or a narrow side street? Each yellow dot is a real streetlight from the City of San Diego inventory.</p>
-      <p>Coverage is dense along Broadway, Harbor Drive, and 5th Avenue. But gaps appear in the eastern blocks of East Village and along quieter streets in Marina. Still, most of downtown is well-lit, so lighting alone does not explain why some routes feel more dangerous than others.</p>
-      <p class="scene-note">55,506 streetlights mapped. Road classification (primary, secondary, residential) also factors in.</p>
+      <h3>Lighting &amp; Roads</h3>
+      <p>Each yellow dot is a real streetlight. Coverage is dense on the main corridors but thins out in East Village. Still not enough variation to explain the safety gap.</p>
     </div>
 
     <div class="step" data-scene="5">
-      <h3>Layer 3: Crime Density</h3>
-      <p>This is the layer that breaks the pattern. Reported crime incidents cluster heavily in East Village and along the Convention Center corridor, while Little Italy and the waterfront stay consistently low.</p>
-      <p>Watch the map fracture from near-uniform blue into dramatic reds and blues. This single variable drives most of the safety score gap between routes.</p>
-      <p class="scene-note">Red dots show reported crime incidents (SDPD NIBRS 2020-2026). Daytime incidents shown.</p>
+      <h3>Crime Density</h3>
+      <p>This is the layer that breaks the pattern. Watch the map fracture from near-uniform blue into reds and blues. Crime drives the entire safety gap between routes.</p>
     </div>
 
     <div class="step" data-scene="6">
       <h3>Five Routes Compared</h3>
-      <p>These are not random lines on a map. They connect the places people actually walk between: the trolley station and the ballpark, Gaslamp restaurants and the Convention Center, Little Italy and the waterfront.</p>
-      <p>During the day, Little Italy to Seaport Village is the safest corridor (73/100). Gaslamp to Convention Center scores lowest (55/100). That 18-point gap exists even though walkable streets and lighting are nearly identical across all five routes.</p>
-      <p class="scene-note">Hover over a route to see its score. Click routes in the explore section below for full breakdown.</p>
+      <p>These connect real destinations: the trolley station to the ballpark, Gaslamp to the Convention Center, Little Italy to the waterfront. Hover over a route to see its score.</p>
     </div>
 
     <div class="step" data-scene="7">
-      <h3>The Twist: Day vs. Night</h3>
-      <p>Here is the surprise: the Gaslamp Quarter actually gets <em>safer</em> at night. More foot traffic, more nightlife, more eyes on the street. Its score jumps from 55 to 61.</p>
-      <p>East Village moves the other direction. Meanwhile, the safest route (Little Italy to Seaport Village) barely budges: 73 to 72. It is the one path that stays safe around the clock.</p>
+      <h3>Day vs. Night</h3>
+      <p>The Gaslamp gets <em>safer</em> at night. More foot traffic, more eyes on the street. East Village goes the other direction. Toggle to see the shift.</p>
       <div class="inline-toggle" id="scroll-time-toggle">
         <button class="active" data-time="day"><span class="time-icon">&#9728;</span>Day</button>
         <button data-time="night"><span class="time-icon">&#9790;</span>Night</button>
       </div>
-      <p class="scene-note">Toggle above to see the shift, or keep scrolling.</p>
     </div>
 
     <div class="step" data-scene="8">
       <h3>What This Means</h3>
-      <p>For the pedestrian: route choice is a safety decision. After a Padres night game, walking through Little Italy (72/100) instead of cutting through East Village puts you on a measurably safer path. Most people make this choice on instinct. The data shows that instinct is sometimes wrong: the Gaslamp corridor is actually safer at night than during the day.</p>
-      <p>For the city: adding more streetlights will not close this gap. Lighting scores are already 83 to 93 across all five corridors. Street design is identical. The entire 18-point safety spread comes from where crime clusters, and those clusters shift between day and night. That means targeted policing and programming by time of day would do more than any lighting investment.</p>
-      <p>A static safety map would miss the time dimension. By letting you toggle day and night, this visualization reveals the pattern a single map cannot: the safest route at 2 PM is not the safest route at 2 AM.</p>
-      <p class="scene-note">Explore the full interactive version below.</p>
+      <p>The 18-point gap is driven entirely by crime, not lighting or street design. And crime shifts with time of day. The safest route at 2 PM is not the safest at 2 AM. Explore below to find your own.</p>
     </div>
   </div>
 </section>
@@ -1106,7 +1091,21 @@ function drawExploreMap(colorScale) {
     .attr('y2', d => exploreProjection(d.to)[1])
     .attr('stroke', d => colorScale(d.score_day))
     .attr('stroke-width', 2.5).attr('stroke-opacity', 0.65)
-    .attr('class', 'edge-line explore-edge');
+    .attr('class', 'edge-line explore-edge')
+    .style('pointer-events', 'visibleStroke')
+    .on('mouseenter', function(event, d) {
+      const score = state.timeOfDay === 'day' ? d.score_day : d.score_night;
+      const s = Math.round(score * 100);
+      const [mx, my] = d3.pointer(event, container);
+      d3.select('#explore-tooltip').style('opacity', 1)
+        .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
+        .html(`<strong>${s}/100</strong> ${getQualLabel(score)}<br><span style="font-size:10px;color:#aaa">${Math.round(d.length)}m segment</span>`);
+      d3.select(this).attr('stroke-width', 5).attr('stroke-opacity', 1);
+    })
+    .on('mouseleave', function() {
+      d3.select('#explore-tooltip').style('opacity', 0);
+      d3.select(this).attr('stroke-width', null).attr('stroke-opacity', null);
+    });
 
   svg.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
   svg.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
