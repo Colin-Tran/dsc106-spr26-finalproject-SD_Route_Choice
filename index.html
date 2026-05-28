@@ -237,7 +237,7 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .explore-section > .explore-subtitle { font-size: 13px; color: #666; margin-bottom: 24px; }
 .explore-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 300px;
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -1295,6 +1295,30 @@ function updateExploreMap() {
   const labelStroke = d3.interpolateRgb('#fff', '#0f172a')(blend);
   svg.selectAll('.explore-label')
     .attr('fill', labelFill).attr('stroke', labelStroke);
+
+  // Dynamic insight annotations
+  const content = svg.select('#explore-content');
+  content.selectAll('.explore-insight').remove();
+  if (blend > 0.6) {
+    const insights = [
+      { coords: [-117.162, 32.711], text: 'Gaslamp: 55 → 61', color: '#059669' },
+      { coords: [-117.148, 32.715], text: 'East Village: riskier', color: '#DC2626' }
+    ];
+    insights.forEach(ins => {
+      const [x, y] = exploreProjection(ins.coords);
+      const g = content.append('g').attr('class', 'explore-insight').style('opacity', 0);
+      const txt = g.append('text').attr('x', x).attr('y', y)
+        .text(ins.text).attr('font-size', '13px').attr('fill', '#fff').attr('font-weight', '700')
+        .style('pointer-events', 'none');
+      const bbox = txt.node().getBBox();
+      g.insert('rect', 'text')
+        .attr('x', bbox.x - 8).attr('y', bbox.y - 5)
+        .attr('width', bbox.width + 16).attr('height', bbox.height + 10)
+        .attr('rx', 5).attr('fill', ins.color)
+        .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
+      g.transition().duration(400).style('opacity', Math.min((blend - 0.6) * 2.5, 1));
+    });
+  }
 
   updateExploreMarkers();
 }
