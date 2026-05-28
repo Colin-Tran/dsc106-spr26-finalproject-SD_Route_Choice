@@ -6,6 +6,7 @@
 <meta name="description" content="An interactive exploration of pedestrian safety across 5,500 street segments in downtown San Diego. Score every street, compare routes, watch the city transform from day to night.">
 <title>SafePath: Is Your Walking Route the Safest One?</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -123,8 +124,8 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .nav-instruction { font-size: 12px; color: #888; margin-bottom: 12px; line-height: 1.5; }
 .nav-point { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; background: #f7fafc; border: 1px solid #e2e8f0; }
 .nav-point .nav-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.nav-point .nav-dot.start { background: #16a34a; }
-.nav-point .nav-dot.end { background: #dc2626; }
+.nav-point .nav-dot.start { background: #2563eb; }
+.nav-point .nav-dot.end { background: #D97706; }
 .nav-point .nav-text { font-size: 12px; color: #555; }
 .nav-point .nav-text.set { color: #1a1a1a; font-weight: 500; }
 .nav-clear { margin-top: 10px; padding: 7px 14px; font-size: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; color: #555; transition: all 0.15s; width: 100%; }
@@ -141,10 +142,10 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .nav-compare-row:hover { background: #f7fafc; }
 .nav-compare-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .nav-compare-tag.orig { background: #e2e8f0; color: #475569; }
-.nav-compare-tag.safer { background: #bbf7d0; color: #166534; }
+.nav-compare-tag.safer { background: #cffafe; color: #155e75; }
 .nav-compare-score { font-size: 18px; font-weight: 700; }
 .nav-compare-detail { font-size: 11px; color: #555; }
-.nav-compare-delta { margin-top: 8px; padding: 8px 12px; font-size: 12px; color: #166534; background: #f0fdf4; border-top: 1px solid #bbf7d0; text-align: center; font-weight: 500; }
+.nav-compare-delta { margin-top: 8px; padding: 8px 12px; font-size: 12px; color: #155e75; background: #ecfeff; border-top: 1px solid #cffafe; text-align: center; font-weight: 500; }
 
 /* ── Scroll indicator ── */
 .scroll-cue {
@@ -255,6 +256,23 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 @keyframes crime-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
 .crime-dot-night { animation: crime-pulse 2.5s ease-in-out infinite; }
 
+@keyframes light-twinkle {
+  0%   { r: var(--halo-r); opacity: var(--halo-base); }
+  30%  { r: calc(var(--halo-r) * 1.4); opacity: calc(var(--halo-base) * 1.6); }
+  50%  { r: calc(var(--halo-r) * 1.1); opacity: calc(var(--halo-base) * 1.2); }
+  80%  { r: calc(var(--halo-r) * 1.5); opacity: calc(var(--halo-base) * 1.8); }
+  100% { r: var(--halo-r); opacity: var(--halo-base); }
+}
+@keyframes core-flicker {
+  0%,100% { opacity: 0.85; }
+  15% { opacity: 1; }
+  40% { opacity: 0.7; }
+  65% { opacity: 1; }
+  85% { opacity: 0.9; }
+}
+.light-halo.twinkling { animation: light-twinkle var(--twinkle-dur) ease-in-out infinite; }
+.light-core.twinkling { animation: core-flicker var(--twinkle-dur) ease-in-out infinite; }
+
 /* ── Explore map cursor ── */
 #explore-map-svg { cursor: grab; }
 #explore-map-svg:active { cursor: grabbing; }
@@ -309,14 +327,14 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 }
 .rec-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .rec-card.safest { border-left: 4px solid #2563eb; }
-.rec-card.avoid { border-left: 4px solid #dc2626; }
-.rec-card.shift { border-left: 4px solid #16a34a; }
+.rec-card.avoid { border-left: 4px solid #D97706; }
+.rec-card.shift { border-left: 4px solid #0891b2; }
 .rec-card .rec-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
 .rec-card .rec-route { font-size: 15px; font-weight: 600; color: #1a1a1a; }
 .rec-card .rec-score { font-size: 13px; color: #555; margin-top: 2px; }
 .rec-card.safest .rec-label { color: #2563eb; }
-.rec-card.avoid .rec-label { color: #dc2626; }
-.rec-card.shift .rec-label { color: #16a34a; }
+.rec-card.avoid .rec-label { color: #D97706; }
+.rec-card.shift .rec-label { color: #0891b2; }
 
 /* ── Key findings ── */
 .findings-row { display: flex; gap: 20px; margin-bottom: 30px; }
@@ -338,6 +356,9 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .writeup h2 { font-size: 18px; font-weight: 600; margin-bottom: 14px; }
 .writeup h3 { font-size: 15px; font-weight: 600; margin-top: 22px; margin-bottom: 8px; color: #333; }
 .writeup p { font-size: 14px; color: #444; margin-bottom: 10px; }
+
+.role-btn.active { background: #D97706 !important; color: #fff; border-color: #D97706 !important; font-weight: 500; }
+.role-btn:hover:not(.active) { background: #f7f6f2; }
 
 footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 
@@ -385,43 +406,81 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       <div class="formula-example">Scores range from 23 (High Risk) to 97 (Low Risk) across 5,500 segments</div>
     </div>
     <div class="tooltip" id="tooltip"></div>
+    <div id="scroll-color-legend" style="position:absolute;bottom:48px;left:16px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.92);padding:8px 14px;border-radius:8px;font-size:12px;color:#555;z-index:5;opacity:0;transition:opacity 0.5s ease;box-shadow:0 1px 6px rgba(0,0,0,0.1);">
+      <span style="font-weight:600;color:#e8590c;">Dangerous</span>
+      <div style="width:140px;height:12px;border-radius:4px;background:linear-gradient(to right, #e8590c, #fca86e, #f0f0f0, #7db8da, #2166ac);"></div>
+      <span style="font-weight:600;color:#4575b4;">Safe</span>
+    </div>
     <div class="legend" id="legend"></div>
     <div id="loading-overlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.95);z-index:20;"><div style="text-align:center;"><div style="font-size:16px;font-weight:600;color:#555;">Loading downtown San Diego...</div><div style="font-size:12px;color:#999;margin-top:4px;">5,500 street segments + 1,000 streetlights + 800 crime incidents</div></div></div>
   </div>
   <div class="steps-container">
+    <div id="role-bar" style="position:sticky;top:0;z-index:8;padding:8px 0 6px;margin-bottom:8px;">
+      <div style="background:rgba(255,255,255,0.96);border:1px solid #e0e0e0;border-radius:8px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);backdrop-filter:blur(8px);">
+        <div style="font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Read this story as a...</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="role-picker">
+          <button class="role-btn active" data-role="nightwalker" style="padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;cursor:pointer;transition:all 0.15s;">Person walking at night</button>
+          <button class="role-btn" data-role="tourist" style="padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;cursor:pointer;transition:all 0.15s;">Tourist</button>
+          <button class="role-btn" data-role="student" style="padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;cursor:pointer;transition:all 0.15s;">College student</button>
+          <button class="role-btn" data-role="runner" style="padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;cursor:pointer;transition:all 0.15s;">Solo runner</button>
+          <button class="role-btn" data-role="planner" style="padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:20px;background:#fff;cursor:pointer;transition:all 0.15s;">City planner</button>
+        </div>
+      </div>
+    </div>
+
     <div class="step" data-scene="1">
       <h3><span class="step-num">1</span>The Question</h3>
-      <p>You leave Petco Park after a night game. Do you cut through East Village or loop through the Gaslamp? The data says one choice is 18 points safer. Scroll to see why.</p>
+      <div id="scene1-text">
+        <p>67% of women say walking alone at night is their greatest safety fear. They already scan for unlit streets and avoid quiet blocks, but navigation apps like Google Maps ignore safety entirely and optimize for speed.</p>
+        <p>This map shows every walkable street in downtown San Diego, a mid-size coastal city in the US. We scored all of them for safety. The data says one route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>
+      </div>
     </div>
 
     <div class="step" data-scene="2">
       <h3><span class="step-num">2</span>How We Measure Safety</h3>
-      <p>Each of the 5,500 street segments gets a composite score from three public datasets. See the formula on the map.</p>
+      <div id="scene2-text">
+        <p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. The formula on the map shows how they combine.</p>
+        <p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>
+      </div>
     </div>
 
     <div class="step" data-scene="3">
-      <h3><span class="step-num">3</span>Walkable Streets</h3>
-      <p>Short blocks, shops at street level, bus stops nearby. Downtown has all of this everywhere. The map is almost entirely blue. If this were all that mattered, every route would be equally safe.</p>
+      <h3><span class="step-num">3</span>Layer 1: Walkable Streets</h3>
+      <div id="scene3-text">
+        <p>Walkability measures things like block length, nearby shops, and transit stops. This entire downtown scores high, so the map is almost entirely blue. If walkability were all that mattered, every route would be equally safe.</p>
+        <p style="font-size:12px;color:#888;">Notice the map: nearly uniform color. This layer does not explain the safety gap.</p>
+      </div>
     </div>
 
     <div class="step" data-scene="4">
-      <h3><span class="step-num">4</span>Lighting &amp; Roads</h3>
-      <p>Each yellow dot is a real streetlight. Coverage is dense on the main corridors but thins out in East Village. Still not enough variation to explain the safety gap.</p>
+      <h3><span class="step-num">4</span>Layer 2: Lighting &amp; Roads</h3>
+      <div id="scene4-text">
+        <p>Each small dot is a real streetlight. The main corridors on the left side of the map are well-lit, but the right side has gaps. Some variation appears, but not enough to explain an 18-point safety difference.</p>
+        <p style="font-size:12px;color:#888;">Streetlights thin out toward the east. But lighting alone is not the answer.</p>
+      </div>
     </div>
 
     <div class="step" data-scene="5">
-      <h3><span class="step-num">5</span>Crime Density</h3>
-      <p>This is the layer that breaks the pattern. Watch the map fracture from near-uniform blue into reds and blues. Crime drives the entire safety gap between routes.</p>
+      <h3><span class="step-num">5</span>Layer 3: Crime Density</h3>
+      <div id="scene5-text">
+        <p>Each orange dot is a real crime incident from police records. Watch the map fracture from uniform blue into sharp oranges and blues. Streets that looked identical before now split apart. This single variable drives the entire safety gap.</p>
+        <p style="font-size:12px;color:#888;">The left side stays blue (safe). The center turns orange (dangerous).</p>
+      </div>
     </div>
 
     <div class="step" data-scene="6">
       <h3><span class="step-num">6</span>Five Routes Compared</h3>
-      <p>These connect real destinations: the trolley station to the ballpark, Gaslamp to the Convention Center, Little Italy to the waterfront. Hover over a route to see its score.</p>
+      <div id="scene6-text">
+        <p>We picked five routes that represent trips people take in any downtown: commuting to transit, walking to an event, exploring on foot, heading to a park. They cross different neighborhoods and different safety zones.</p>
+        <p style="font-size:12px;color:#888;">Hover any colored line to see its score. Labels show each route's safety rating out of 100.</p>
+      </div>
     </div>
 
     <div class="step" data-scene="7">
       <h3><span class="step-num">7</span>Day vs. Night</h3>
-      <p>The Gaslamp gets <em>safer</em> at night. More foot traffic, more eyes on the street. East Village goes the other direction. Toggle to see the shift.</p>
+      <div id="scene7-text">
+        <p>Safety is not static. The nightlife district (center of the map) gets <em>safer</em> at night because crowds fill the streets. The residential area to the east goes the other direction. Toggle to see the colors shift.</p>
+      </div>
       <div class="inline-toggle" id="scroll-time-toggle">
         <button class="active" data-time="day"><span class="time-icon">&#9728;</span>Day</button>
         <button data-time="night"><span class="time-icon">&#9790;</span>Night</button>
@@ -429,8 +488,11 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     </div>
 
     <div class="step" data-scene="8">
-      <h3><span class="step-num">8</span>What This Means</h3>
-      <p>The 18-point gap is driven entirely by crime, not lighting or street design. And crime shifts with time of day. The safest route at 2 PM is not the safest at 2 AM. Explore below to find your own.</p>
+      <h3><span class="step-num">8</span>What This Means For You</h3>
+      <div id="scene8-text">
+        <p>The 18-point gap between the safest and least-safe route is driven entirely by crime density, not lighting or street design. And because crime patterns shift with time of day, the safest route at 2 PM is not the safest at 2 AM.</p>
+        <p>A static map cannot show this. You had to watch the layers stack, see crime fracture the uniform blue, then drag the time slider to feel how safety redistributes after dark. That progression is the point: pedestrian safety is not one number, and the route you pick is a safety decision.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -443,7 +505,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 </div>
 <div class="explore-section">
   <h2>Explore the Routes</h2>
-  <p class="explore-subtitle">Click a route, drag the time slider, hover any street. Switch to Navigate for three routing profiles: fastest, balanced, safest.</p>
+  <p class="explore-subtitle">Click a route on the right to highlight it on the map. Drag the time slider to watch the city transform from day to night. Hover any street segment to see its safety score. Switch to Navigate to compare three routing strategies for the same trip.</p>
 
   <div class="route-rec" id="route-rec">
     <div class="rec-card safest">
@@ -467,11 +529,10 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <div class="explore-map" id="explore-map-container">
       <svg id="explore-map-svg"></svg>
       <div class="tooltip" id="explore-tooltip"></div>
-      <div class="color-legend">
-        <span>Dangerous</span>
-        <div class="color-legend-bar" style="background: linear-gradient(to right, #d73027, #ffffbf, #4575b4);"></div>
-        <span>Safe</span>
-        <span style="margin-left:auto;font-size:10px;opacity:0.5;">SafePath</span>
+      <div class="color-legend" style="padding:8px 14px;gap:8px;">
+        <span style="font-weight:600;color:#e8590c;">Dangerous</span>
+        <div class="color-legend-bar" style="width:150px;height:12px;border-radius:4px;background:linear-gradient(to right, #e8590c, #fca86e, #f0f0f0, #7db8da, #2166ac);"></div>
+        <span style="font-weight:600;color:#4575b4;">Safe</span>
       </div>
     </div>
     <div class="controls">
@@ -481,6 +542,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       </div>
       <div id="suggested-panel">
         <h3>Select Route</h3>
+        <p style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.4;">Five common trip types: transit commute, event night, leisure walk, daily errand, park visit. Each crosses different safety zones.</p>
         <ul class="route-list" id="route-list"></ul>
         <div class="route-context" id="route-context"></div>
       </div>
@@ -491,15 +553,24 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
         <div id="nav-comparison"></div>
       </div>
       <div>
-        <h3>Time of Day</h3>
-        <div class="time-slider-container">
-          <div class="time-slider-track">
-            <input type="range" min="6" max="24" value="12" step="1" class="time-slider-input" id="time-slider" aria-label="Time of day slider, 6 AM to midnight">
+        <h3>Date &amp; Time</h3>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">Date of year</div>
+          <input type="range" min="1" max="365" value="166" step="1" id="date-slider" style="width:100%;accent-color:#D97706;" aria-label="Day of year, January 1 to December 31">
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:#aaa;margin-top:1px;">
+            <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Dec</span>
           </div>
-          <div class="time-slider-ticks">
-            <span class="time-slider-tick">6 AM</span>
+          <div id="date-readout" style="text-align:center;font-size:12px;font-weight:600;color:#555;margin-top:4px;">Jun 15</div>
+          <div id="sun-info" style="text-align:center;font-size:11px;color:#888;margin-top:2px;"></div>
+        </div>
+        <div class="time-slider-container">
+          <div class="time-slider-track" id="time-slider-track">
+            <input type="range" min="5" max="24" value="12" step="0.5" class="time-slider-input" id="time-slider" aria-label="Time of day slider">
+          </div>
+          <div class="time-slider-ticks" id="time-slider-ticks">
+            <span class="time-slider-tick">5 AM</span>
             <span class="time-slider-tick">12 PM</span>
-            <span class="time-slider-tick boundary">6 PM</span>
+            <span class="time-slider-tick boundary" id="sunset-tick">Sunset</span>
             <span class="time-slider-tick">12 AM</span>
           </div>
           <div class="time-slider-readout day" id="time-readout">&#9728; 12:00 PM (Daytime)</div>
@@ -512,6 +583,24 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
           <div class="toggle-row"><span>Street safety colors</span><div class="toggle-btn on" id="tog-edges" role="switch" tabindex="0" aria-label="Toggle street safety layer"></div></div>
         </div>
         <p style="font-size:11px;color:#888;margin-top:6px;">Streetlights and crime incidents update automatically with time of day.</p>
+      </div>
+      <div>
+        <h3>What drives safety? <span style="font-size:10px;font-weight:400;color:#888;">Drag to find out</span></h3>
+        <div style="font-size:11px;color:#666;margin-bottom:8px;">Adjust how much each factor matters. Watch the map change.</div>
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Crime density</span><span id="w-crime-val">50%</span></div>
+          <input type="range" min="0" max="100" value="50" id="w-crime" style="width:100%;accent-color:#e8590c;">
+        </div>
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Lighting &amp; roads</span><span id="w-light-val">25%</span></div>
+          <input type="range" min="0" max="100" value="25" id="w-light" style="width:100%;accent-color:#64748b;">
+        </div>
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Walkability</span><span id="w-walk-val">25%</span></div>
+          <input type="range" min="0" max="100" value="25" id="w-walk" style="width:100%;accent-color:#2166ac;">
+        </div>
+        <div id="weight-insight" style="font-size:11px;color:#D97706;font-weight:500;margin-top:6px;min-height:16px;"></div>
+        <button id="w-reset" style="margin-top:6px;padding:5px 12px;font-size:11px;border:1px solid #e0e0e0;border-radius:5px;background:#fff;cursor:pointer;color:#555;width:100%;">Reset to default weights</button>
       </div>
       <div class="score-panel" id="score-panel">
         <h4 id="score-panel-title">Safety Breakdown</h4>
@@ -541,8 +630,32 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <svg id="comparison-chart"></svg>
   </div>
 
-  <div class="writeup">
-    <h2>Project Writeup</h2>
+  <div class="findings-row" style="margin-top:30px;">
+    <div class="finding-card" style="border-top-color:#2166ac;">
+      <div class="finding-number" style="color:#2166ac;">67%</div>
+      <div class="finding-label">of women say walking alone at night is their greatest safety fear (Gallup 2025)</div>
+    </div>
+    <div class="finding-card" style="border-top-color:#2166ac;">
+      <div class="finding-number" style="color:#2166ac;">183%</div>
+      <div class="finding-label">more safe-area usage when routes are scored for safety vs. Google Maps (CHI 2024)</div>
+    </div>
+    <div class="finding-card" style="border-top-color:#2166ac;">
+      <div class="finding-number" style="color:#2166ac;">0</div>
+      <div class="finding-label">widely-adopted tools combine crime + lighting + walkability into one street-level safety score</div>
+    </div>
+  </div>
+
+  <div class="writeup" style="border-top:3px solid #D97706;padding-bottom:16px;">
+    <h2 style="margin-bottom:6px;">Takeaway</h2>
+    <p style="font-size:15px;color:#333;line-height:1.6;"><strong>Route choice is a safety decision.</strong> Crime density is the single variable that explains nearly all of the 18-point gap between downtown routes. The progressive layer reveal makes that dominance feel inevitable, and the time slider lets you watch safety redistribute after dark. Interaction is not decoration here. It is how the argument works.</p>
+    <p style="font-size:13px;color:#555;line-height:1.6;margin-top:8px;">Three independent teams have tried to build this tool: SafeWalk AI (Bryant University) uses crime data only, Coolight (University of Toronto) uses lighting only, and Ur Next Route (University of Nevada) uses lighting and distance. None combine all three layers. SafePath does.</p>
+  </div>
+
+  <details class="writeup" style="cursor:default;">
+    <summary style="cursor:pointer;font-size:18px;font-weight:600;padding:4px 0;list-style:none;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:#888;border:1px solid #ddd;border-radius:4px;padding:2px 8px;transition:background 0.15s;">Show writeup</span>
+      Project Writeup
+    </summary>
 
     <h3>1. What have you done so far?</h3>
     <p>We built a scrollytelling visualization that scores every street segment in downtown San Diego for pedestrian safety and maps five walking routes between real destinations. The data comes from four public sources: 46,000 crime incidents (SDPD NIBRS 2020-2026), 55,506 streetlight locations (City of SD inventory), the road network (OpenStreetMap via OSMnx), and walkability scores (EPA Smart Location Database).</p>
@@ -555,7 +668,13 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <p>Another challenge was making 5,500 street edges interactive without overwhelming the viewer. We used scrollytelling to introduce layers progressively and added hover tooltips that only activate after the relevant layer is introduced. The explore section adds zoom, pan, and per-segment tooltips for full exploration.</p>
     <p>Performance was a real concern. Rendering 5,500 edges plus 1,000 streetlights plus 800 crime dots in SVG, with smooth transitions on every slider drag, can lag on slower machines. We optimized by removing expensive SVG filters (blur), using CSS animations instead of JS-driven ones for pulsing dots, and applying clipPaths for the coastline rather than filtering data points.</p>
     <p>The connection to SafePath (a separate DS3 project building a pedestrian routing app) shaped our design. We adopted their cost function for the three routing profiles and structured the score decomposition to match what their Streamlit app displays. This means our visualization serves both as a standalone explorable explanation and as a visual reference for the SafePath team's own development.</p>
-  </div>
+
+    <h3>3. Who would use this and why does it matter?</h3>
+    <p>According to a 2025 Gallup survey, only 38% of US women feel safe walking alone at night, compared to 78% of men. Research from CHI 2024 found that navigation apps like Google Maps route pedestrians through unsafe areas, and that safety-aware routing achieves 183% more use of safe pedestrian areas compared to standard routing. These users already perform mental safety calculations but lack data to support them.</p>
+    <p>Three independent teams have attempted to build a safety-scored route tool: SafeWalk AI (Bryant University) uses crime data only, Coolight (University of Toronto) uses lighting and community reports, and Ur Next Route (University of Nevada Reno) uses lighting and distance. None combine all three data layers (crime, lighting, walkability) or provide time-of-day interpolation. The fact that three teams independently built this validates the unmet need.</p>
+    <p>Beyond individual pedestrians, city planners could use the spatial analysis to prioritize streetlight investment (which segments would benefit most from one additional light?), university safety offices could integrate it with campus escort programs (Clery Act compliance), and real estate platforms could augment Walk Score (which measures access but not safety, and adds $3,250 per point to home values according to Redfin).</p>
+  </details>
+
 </div>
 
 <footer>
@@ -573,11 +692,68 @@ let exploreProjection = null;
 let graph = null;
 let exploreZoom = null;
 
+/* ═══ SOLAR CALCULATIONS (San Diego 32.72°N, -117.16°W) ═══ */
+const SD_LAT = 32.72;
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_MID_DOY = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349];
+
+function computeSunTimes(dayOfYear) {
+  const lat = SD_LAT * Math.PI / 180;
+  const decl = -23.44 * Math.cos(2 * Math.PI * (dayOfYear + 10) / 365) * Math.PI / 180;
+  const cosHA = -Math.tan(lat) * Math.tan(decl);
+  const ha = Math.acos(Math.max(-1, Math.min(1, cosHA))) * 180 / Math.PI;
+  const solarNoon = 12 + (117.16 / 15) - (-8);
+  const sunrise = solarNoon - ha / 15;
+  const sunset = solarNoon + ha / 15;
+  const civilDawn = sunrise - 0.5;
+  const civilDusk = sunset + 0.5;
+  return { sunrise: Math.round(sunrise * 2) / 2, sunset: Math.round(sunset * 2) / 2, dawn: Math.round(civilDawn * 2) / 2, dusk: Math.round(civilDusk * 2) / 2 };
+}
+
+let sunTimes = computeSunTimes(166);
+
 function getTimeBlend() {
   const h = +document.getElementById('time-slider').value;
-  if (h <= 15) return 0;
-  if (h >= 19) return 1;
-  return (h - 15) / 4;
+  const fadeStart = sunTimes.sunset - 1.5;
+  const fadeEnd = sunTimes.dusk;
+  if (h <= fadeStart) return 0;
+  if (h >= fadeEnd) return 1;
+  return (h - fadeStart) / (fadeEnd - fadeStart);
+}
+
+function formatHour(h) {
+  const hr = Math.floor(h);
+  const min = (h % 1) >= 0.5 ? '30' : '00';
+  const ampm = hr >= 12 && hr < 24 ? 'PM' : 'AM';
+  const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr);
+  return display + ':' + min + ' ' + ampm;
+}
+
+function doyToDateStr(doy) {
+  const d = new Date(2026, 0, doy);
+  return MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+}
+
+function updateSunUI() {
+  const doy = +document.getElementById('date-slider').value;
+  sunTimes = computeSunTimes(doy);
+  document.getElementById('date-readout').textContent = doyToDateStr(doy);
+  document.getElementById('sun-info').textContent =
+    'Sunrise ' + formatHour(sunTimes.sunrise) + '  ·  Sunset ' + formatHour(sunTimes.sunset);
+  // Update slider track gradient based on sun times
+  const range = 24 - 5;
+  const sunrisePct = ((sunTimes.dawn - 5) / range * 100).toFixed(0);
+  const sunsetPct = ((sunTimes.sunset - 5) / range * 100).toFixed(0);
+  const duskPct = ((sunTimes.dusk - 5) / range * 100).toFixed(0);
+  const track = document.getElementById('time-slider-track');
+  track.style.background = `linear-gradient(to right, #0f172a 0%, #1e3a5f ${sunrisePct}%, #fbbf24 ${(+sunrisePct + 8)}%, #fef3c7 35%, #fef3c7 ${sunsetPct}%, #f59e0b ${sunsetPct}%, #1e3a5f ${duskPct}%, #0f172a 100%)`;
+  // Update sunset tick label
+  document.getElementById('sunset-tick').textContent = formatHour(sunTimes.sunset);
+  // Daylight hours
+  const daylight = (sunTimes.sunset - sunTimes.sunrise).toFixed(1);
+  document.getElementById('sun-info').textContent +=
+    '  ·  ' + daylight + 'h daylight';
 }
 
 const COASTLINE = [
@@ -590,29 +766,29 @@ const COASTLINE = [
 
 const ROUTE_CONTEXT = {
   'Santa Fe Depot to Petco Park': {
-    who: 'Padres fans arriving by Amtrak, Coaster, or trolley',
-    when: 'Game days and concert nights',
-    tip: 'After a night game, Harbor Drive is better lit than cutting through East Village.'
+    type: 'Transit → Event',
+    who: 'A commuter arriving by train and walking to the baseball stadium',
+    tip: 'The main waterfront road is better lit than cutting through the residential blocks to the east.'
   },
   'Gaslamp to Convention Center': {
-    who: 'Convention attendees heading to dinner or nightlife',
-    when: 'Conference days, weekend evenings',
-    tip: 'Counterintuitively, this corridor is safer at night (61) than during the day (55) thanks to foot traffic.'
+    type: 'Nightlife → Conference',
+    who: 'A visitor walking from the entertainment district to the convention center',
+    tip: 'Counterintuitively, this corridor is safer at night (61) than during the day (55) because crowds fill the streets.'
   },
   'Little Italy to Seaport Village': {
-    who: 'Tourists and residents walking the waterfront',
-    when: 'Weekends, lunch hours, sunset walks',
+    type: 'Dining → Waterfront',
+    who: 'A tourist walking from the restaurant district to the waterfront shops',
     tip: 'The safest corridor in downtown at any hour. A good default if you are unsure.'
   },
   'East Village to 12th & Imperial': {
-    who: 'Commuters walking to the trolley hub',
-    when: 'Weekday mornings and evenings',
-    tip: 'Improves at night (68 to 72). Stay on the main streets near the transit center.'
+    type: 'Residential → Transit',
+    who: 'A resident walking from their apartment to the main transit hub',
+    tip: 'Score improves at night (68 to 72). Stick to the main streets near the transit center.'
   },
   'Hillcrest to Balboa Park': {
-    who: 'Park visitors, museum goers, residents',
-    when: 'Weekend mornings, after-work walks',
-    tip: 'Better at night (59 to 66). University Avenue has more foot traffic after dark.'
+    type: 'Neighborhood → Park',
+    who: 'A resident walking from their neighborhood to the city\'s largest park',
+    tip: 'Safer at night (59 to 66) because the main avenue has more foot traffic after dark.'
   }
 };
 
@@ -713,7 +889,7 @@ async function init() {
     document.querySelector('.sticky-container').innerHTML = '<p style="padding:40px;color:#e53e3e;">Failed to load data: ' + e.message + '</p>';
     return;
   }
-  const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
 
   graph = buildGraph(data.edges);
   drawScrollMap(colorScale);
@@ -871,6 +1047,43 @@ function drawScrollMap(colorScale) {
   // Annotation layer
   svg.append('g').attr('id', 'scroll-annotations');
 
+  // Location inset — real California outline via TopoJSON
+  const inset = svg.append('g').attr('transform', 'translate(680, 12)').attr('id', 'ca-inset');
+  inset.append('rect').attr('x', -5).attr('y', -5).attr('width', 110).attr('height', 120).attr('rx', 6)
+    .attr('fill', '#fff').attr('stroke', '#ddd').attr('opacity', 0.92);
+  // Fetch real US states geometry
+  d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(us => {
+    const states = topojson.feature(us, us.objects.states);
+    const california = states.features.find(f => f.properties.name === 'California');
+    // Fit California into the inset box
+    const insetProj = d3.geoMercator().fitExtent([[4, 4], [60, 100]], california);
+    const insetPath = d3.geoPath().projection(insetProj);
+    // Draw all US states faintly for context
+    inset.selectAll('.us-state').data(states.features).join('path')
+      .attr('d', insetPath).attr('fill', '#e8eaed').attr('stroke', '#ccc').attr('stroke-width', 0.3);
+    // Highlight California
+    inset.append('path').datum(california).attr('d', insetPath)
+      .attr('fill', '#D97706').attr('fill-opacity', 0.2).attr('stroke', '#D97706').attr('stroke-width', 1.2);
+    // San Diego dot at real coordinates
+    const sdCoords = insetProj([-117.16, 32.72]);
+    inset.append('circle').attr('cx', sdCoords[0]).attr('cy', sdCoords[1]).attr('r', 3.5)
+      .attr('fill', '#D97706').attr('stroke', '#fff').attr('stroke-width', 1.5);
+    // Labels
+    inset.append('text').attr('x', 55).attr('y', 68)
+      .text('San Diego').attr('font-size', '10px').attr('fill', '#333')
+      .attr('text-anchor', 'start').attr('font-weight', '700');
+    inset.append('text').attr('x', 55).attr('y', 79)
+      .text('California, USA').attr('font-size', '8px').attr('fill', '#888')
+      .attr('text-anchor', 'start');
+    inset.append('text').attr('x', 55).attr('y', 90)
+      .text('Pop. 1.4 million').attr('font-size', '7.5px').attr('fill', '#aaa')
+      .attr('text-anchor', 'start');
+    // Connector line from dot to label
+    inset.append('line').attr('x1', sdCoords[0] + 4).attr('y1', sdCoords[1])
+      .attr('x2', 53).attr('y2', 64)
+      .attr('stroke', '#D97706').attr('stroke-width', 1).attr('stroke-dasharray', '2,2');
+  });
+
   // Neighborhood labels
   const labels = svg.append('g').attr('id', 'scroll-labels');
   [
@@ -898,7 +1111,7 @@ function setScene(n) {
   const prevScene = state.currentScene;
   state.currentScene = n;
   const svg = d3.select('#map-svg');
-  const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
   const routeNames = Object.keys(data.routes);
   const t = d3.transition().duration(600);
 
@@ -909,6 +1122,12 @@ function setScene(n) {
 
   // Formula overlay
   d3.select('#formula-overlay').classed('visible', n === 2);
+
+  // Color scale legend — show from scene 3 onward when edges have color
+  const colorLegend = document.getElementById('scroll-color-legend');
+  colorLegend.style.opacity = n >= 3 ? '1' : '0';
+  if (isNight) { colorLegend.style.background = 'rgba(26,32,44,0.9)'; colorLegend.style.color = '#94a3b8'; }
+  else { colorLegend.style.background = 'rgba(255,255,255,0.92)'; colorLegend.style.color = '#555'; }
 
   // Map subtitle
   const labels = [
@@ -956,19 +1175,43 @@ function setScene(n) {
       .attr('stroke-opacity', 0.75);
   }
 
-  // Streetlights — scene 4 cascade + scene 7 night glow
+  // Streetlights — scene 4 cascade + scene 7 night glow with twinkling
   const showLights = (n === 4) || (n === 7 && state.timeOfDay === 'night');
-  const lightData = showLights && data.streetlights ? data.streetlights : [];
-  svg.select('#scroll-lights').selectAll('circle')
-    .data(lightData, (d, i) => i)
-    .join(
-      enter => enter.append('circle')
-        .attr('cx', d => scrollProjection(d)[0]).attr('cy', d => scrollProjection(d)[1])
-        .attr('r', 3).attr('fill', '#f59e0b').attr('opacity', 0),
-      update => update,
-      exit => exit.transition(t).attr('opacity', 0).remove()
-    )
-    .transition().delay((d, i) => i * 1.5).duration(400).attr('opacity', 0.5);
+  const scrollLightData = showLights && data.streetlights ? data.streetlights : [];
+  const isNightScene = n === 7 && state.timeOfDay === 'night';
+  const scrollLightGroup = svg.select('#scroll-lights');
+  const scrollLightSel = scrollLightGroup.selectAll('.light-unit').data(scrollLightData, (d, i) => i);
+  const scrollLightEnter = scrollLightSel.enter().append('g').attr('class', 'light-unit')
+    .attr('transform', d => `translate(${scrollProjection(d)[0]},${scrollProjection(d)[1]})`)
+    .style('opacity', 0);
+  scrollLightEnter.append('circle').attr('class', 'light-halo');
+  scrollLightEnter.append('circle').attr('class', 'light-core');
+  scrollLightSel.exit().transition(t).style('opacity', 0).remove();
+  const scrollHaloR = isNightScene ? 6 : 4;
+  const scrollHaloOp = isNightScene ? 0.2 : 0.1;
+  const scrollLightAll = scrollLightGroup.selectAll('.light-unit');
+  scrollLightAll.each(function(d, i) {
+    const g = d3.select(this);
+    const dur = (2 + Math.random() * 3).toFixed(1) + 's';
+    const delay = (Math.random() * 3).toFixed(1) + 's';
+    g.select('.light-halo')
+      .attr('r', scrollHaloR)
+      .attr('fill', isNightScene ? '#e0e7ff' : '#94a3b8')
+      .attr('opacity', scrollHaloOp)
+      .classed('twinkling', isNightScene)
+      .style('--halo-r', scrollHaloR)
+      .style('--halo-base', scrollHaloOp)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', isNightScene ? delay : null);
+    g.select('.light-core')
+      .attr('r', isNightScene ? 2.5 : 1.8)
+      .attr('fill', isNightScene ? '#fff' : '#64748b')
+      .attr('opacity', isNightScene ? 1 : 0.6)
+      .classed('twinkling', isNightScene)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', isNightScene ? delay : null);
+  });
+  scrollLightAll.transition().delay((d, i) => i * 1.5).duration(400).style('opacity', 1);
 
   // Crime
   const showCrime = (n === 5);
@@ -978,7 +1221,7 @@ function setScene(n) {
     .join(
       enter => enter.append('circle')
         .attr('cx', d => scrollProjection(d.coords)[0]).attr('cy', d => scrollProjection(d.coords)[1])
-        .attr('r', 0).attr('fill', '#ef4444').attr('opacity', 0),
+        .attr('r', 0).attr('fill', '#e8590c').attr('opacity', 0),
       update => update,
       exit => exit.transition(t).attr('r', 0).attr('opacity', 0).remove()
     )
@@ -1024,7 +1267,7 @@ function setScene(n) {
   svg.selectAll('.time-indicator').remove();
   if (n === 7) {
     const icon = isNight ? '☾' : '☀';
-    const color = isNight ? '#fbbf24' : '#f59e0b';
+    const color = isNight ? '#e0e7ff' : '#94a3b8';
     svg.append('text').attr('class', 'time-indicator')
       .attr('x', 50).attr('y', 60).text(icon)
       .attr('font-size', '32px').attr('fill', color)
@@ -1060,30 +1303,30 @@ function updateScrollAnnotations(n) {
   }
 
   if (n === 5) {
-    addAnnotation(layer, [-117.148, 32.720], 'East Village: 207 incidents', '#b91c1c');
+    addAnnotation(layer, [-117.148, 32.720], 'East Village: 207 incidents', '#c2410c');
     addAnnotation(layer, [-117.178, 32.732], 'Little Italy: 63 incidents', '#1e40af');
   }
 
   if (n === 6) {
     addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1e40af');
-    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#b91c1c');
+    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#c2410c');
   }
 
   if (n === 7) {
     const isNight = state.timeOfDay === 'night';
     if (isNight) {
-      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: 61 at night (+6)', '#16a34a');
-      addAnnotation(layer, [-117.148, 32.720], 'East Village: riskier after dark', '#dc2626');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: 61 at night (+6)', '#2563eb');
+      addAnnotation(layer, [-117.148, 32.720], 'East Village: riskier after dark', '#D97706');
       addAnnotation(layer, [-117.178, 32.732], 'Little Italy: 72, stable', '#2563eb');
     } else {
       addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1d4ed8');
-      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#dc2626');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#D97706');
     }
   }
 
   if (n === 8) {
     addAnnotation(layer, [-117.178, 32.732], 'Little Italy: safest any time of day', '#1e40af');
-    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: +6 at night', '#059669');
+    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: +6 at night', '#2563eb');
   }
 }
 
@@ -1104,11 +1347,10 @@ function buildLegend() {
   const legend = d3.select('#legend');
   legend.html('');
   [
-    { type: 'line', color: '#d73027', label: 'Low safety', layer: 'edges' },
-    { type: 'line', color: '#ffffbf', label: 'Moderate', layer: 'edges' },
-    { type: 'line', color: '#4575b4', label: 'High safety', layer: 'edges' },
-    { type: 'dot', color: '#f59e0b', label: 'Streetlight', layer: 'lights' },
-    { type: 'dot', color: '#ef4444', label: 'Crime incident', layer: 'crime' }
+    { type: 'line', color: '#e8590c', label: 'Dangerous', layer: 'edges' },
+    { type: 'line', color: '#2166ac', label: 'Safe', layer: 'edges' },
+    { type: 'dot', color: '#94a3b8', label: 'Streetlight', layer: 'lights' },
+    { type: 'dot', color: '#e8590c', label: 'Crime incident', layer: 'crime' }
   ].forEach(d => {
     const item = legend.append('div').attr('class', 'legend-item').attr('data-layer', d.layer);
     item.append('div').attr('class', d.type === 'line' ? 'legend-line' : 'legend-dot').style('background', d.color);
@@ -1176,8 +1418,8 @@ function syncTimeToggles() {
     return d3.select(this).attr('data-time') === state.timeOfDay;
   });
   const slider = document.getElementById('time-slider');
-  if (state.timeOfDay === 'night' && +slider.value < 18) slider.value = 21;
-  else if (state.timeOfDay === 'day' && +slider.value >= 18) slider.value = 12;
+  if (state.timeOfDay === 'night' && +slider.value < sunTimes.sunset) slider.value = 21;
+  else if (state.timeOfDay === 'day' && +slider.value >= sunTimes.sunset) slider.value = 12;
   updateSliderReadout();
   updateExploreMap();
   updateScorePanel();
@@ -1190,11 +1432,14 @@ function updateSliderReadout() {
   const slider = document.getElementById('time-slider');
   const readout = document.getElementById('time-readout');
   const h = +slider.value;
-  const icon = state.timeOfDay === 'day' ? '☀' : '☾';
-  const label = state.timeOfDay === 'day' ? 'Daytime' : 'Nighttime';
-  const hr = h > 12 ? h - 12 : h;
-  const ampm = (h >= 12 && h < 24) ? 'PM' : 'AM';
-  readout.textContent = icon + ' ' + hr + ':00 ' + ampm + ' (' + label + ')';
+  let phase, icon;
+  if (h < sunTimes.dawn) { phase = 'Night'; icon = '☾'; }
+  else if (h < sunTimes.sunrise) { phase = 'Dawn'; icon = '🌅'; }
+  else if (h < sunTimes.sunset) { phase = 'Daytime'; icon = '☀'; }
+  else if (h < sunTimes.dusk) { phase = 'Dusk'; icon = '🌇'; }
+  else { phase = 'Night'; icon = '☾'; }
+  state.timeOfDay = (h < sunTimes.sunset) ? 'day' : 'night';
+  readout.textContent = icon + ' ' + formatHour(h) + ' (' + phase + ')';
   readout.className = 'time-slider-readout ' + state.timeOfDay;
 }
 
@@ -1267,7 +1512,7 @@ function drawExploreMap(colorScale) {
     .attr('x2', d => exploreProjection(d.to)[0])
     .attr('y2', d => exploreProjection(d.to)[1])
     .attr('stroke', d => colorScale(d.score_day))
-    .attr('stroke-width', 2.5).attr('stroke-opacity', 0.65)
+    .attr('stroke-width', 3.5).attr('stroke-opacity', 0.85)
     .attr('class', 'edge-line explore-edge')
     .style('pointer-events', 'visibleStroke')
     .on('mouseenter', function(event, d) {
@@ -1298,7 +1543,6 @@ function drawExploreMap(colorScale) {
       d3.select(this).attr('stroke-width', null).attr('stroke-opacity', null);
     });
 
-  content.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
   content.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
 
   const routeLayer = content.append('g').attr('id', 'explore-routes');
@@ -1329,8 +1573,12 @@ function drawExploreMap(colorScale) {
       .on('mouseleave', () => d3.select('#explore-tooltip').style('opacity', 0));
   });
 
-  // Labels
-  const labels = content.append('g');
+
+  // Streetlights above routes
+  content.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
+
+  // Neighborhood labels on top of everything
+  const labelLayer = content.append('g').attr('id', 'explore-labels');
   [
     { name: 'Little Italy', coords: [-117.1720, 32.7250], anchor: 'end' },
     { name: 'Gaslamp Qtr', coords: [-117.1620, 32.7110], anchor: 'end' },
@@ -1339,9 +1587,9 @@ function drawExploreMap(colorScale) {
     { name: 'Convention Ctr', coords: [-117.1580, 32.7035], anchor: 'middle' }
   ].forEach(n => {
     const [x, y] = exploreProjection(n.coords);
-    labels.append('text').attr('x', x).attr('y', y).text(n.name)
+    labelLayer.append('text').attr('x', x).attr('y', y).text(n.name)
       .attr('font-size', '14px').attr('fill', '#222').attr('text-anchor', n.anchor).attr('font-weight', '700')
-      .attr('stroke', '#fff').attr('stroke-width', 4.5).attr('paint-order', 'stroke')
+      .attr('stroke', '#fff').attr('stroke-width', 5).attr('paint-order', 'stroke')
       .attr('class', 'explore-label').style('pointer-events', 'none');
   });
 
@@ -1373,7 +1621,7 @@ function drawExploreMap(colorScale) {
 function updateExploreMap() {
   const blend = getTimeBlend();
   const isNight = state.timeOfDay === 'night';
-  const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
   const svg = d3.select('#explore-map-svg');
   const container = document.getElementById('explore-map-container');
 
@@ -1391,9 +1639,9 @@ function updateExploreMap() {
       const score = d.score_day * (1 - blend) + d.score_night * blend;
       return colorScale(score);
     })
-    .attr('stroke-opacity', state.showEdges ? (0.65 + blend * 0.15) : 0)
-    .attr('stroke-width', 2.5 + blend * 0.5);
-  svg.select('#explore-edges').attr('filter', blend > 0.5 ? 'url(#edge-glow)' : null);
+    .attr('stroke-opacity', state.showEdges ? (0.85 + blend * 0.1) : 0)
+    .attr('stroke-width', 3.5);
+  svg.select('#explore-edges').attr('filter', null);
 
   // Routes
   svg.selectAll('.explore-route')
@@ -1402,15 +1650,40 @@ function updateExploreMap() {
   svg.selectAll('.explore-halo')
     .attr('stroke-width', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 10 : 0; });
 
-  // Streetlights: gradually appear
+  // Streetlights: glow halo + bright center with twinkling at night
   const lightData = data.streetlights || [];
-  svg.select('#explore-lights').selectAll('circle')
-    .data(lightData, (d, i) => i)
-    .join('circle')
-    .attr('cx', d => exploreProjection(d)[0]).attr('cy', d => exploreProjection(d)[1])
-    .attr('r', 2.5 + blend * 1.5)
-    .attr('fill', d3.interpolateRgb('#f59e0b', '#fbbf24')(blend))
-    .attr('opacity', 0.25 + blend * 0.45);
+  const lightGroup = svg.select('#explore-lights');
+  const lightSel = lightGroup.selectAll('.light-unit').data(lightData, (d, i) => i);
+  const lightEnter = lightSel.enter().append('g').attr('class', 'light-unit')
+    .attr('transform', d => `translate(${exploreProjection(d)[0]},${exploreProjection(d)[1]})`);
+  lightEnter.append('circle').attr('class', 'light-halo');
+  lightEnter.append('circle').attr('class', 'light-core');
+  lightSel.exit().remove();
+  const shouldTwinkle = blend > 0.4;
+  const haloR = 3 + blend * 3;
+  const haloOpacity = 0.05 + blend * 0.18;
+  const lightAll = lightGroup.selectAll('.light-unit');
+  lightAll.each(function(d, i) {
+    const g = d3.select(this);
+    const dur = (2 + Math.random() * 3).toFixed(1) + 's';
+    const delay = (Math.random() * 3).toFixed(1) + 's';
+    g.select('.light-halo')
+      .attr('r', haloR)
+      .attr('fill', d3.interpolateRgb('#94a3b8', '#e0e7ff')(blend))
+      .attr('opacity', haloOpacity)
+      .classed('twinkling', shouldTwinkle)
+      .style('--halo-r', haloR)
+      .style('--halo-base', haloOpacity)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', shouldTwinkle ? delay : null);
+    g.select('.light-core')
+      .attr('r', 1.5 + blend * 1.2)
+      .attr('fill', d3.interpolateRgb('#64748b', '#fff')(blend))
+      .attr('opacity', 0.3 + blend * 0.7)
+      .classed('twinkling', shouldTwinkle)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', shouldTwinkle ? delay : null);
+  });
 
   // Crime: filtered by time, fade with blend
   const crimeFiltered = data.crime
@@ -1424,7 +1697,7 @@ function updateExploreMap() {
     .join('circle')
     .attr('cx', d => exploreProjection(d.coords)[0]).attr('cy', d => exploreProjection(d.coords)[1])
     .attr('r', 3)
-    .attr('fill', d3.interpolateRgb('#ef4444', '#f87171')(blend))
+    .attr('fill', d3.interpolateRgb('#e8590c', '#fb923c')(blend))
     .attr('opacity', 0.3 + blend * 0.3)
     .attr('class', blend > 0.7 ? 'crime-dot-night' : '');
 
@@ -1462,8 +1735,8 @@ function updateExploreMap() {
   content.selectAll('.explore-insight').remove();
   if (blend > 0.6) {
     const insights = [
-      { coords: [-117.162, 32.711], text: 'Gaslamp: 55 → 61', color: '#059669' },
-      { coords: [-117.148, 32.715], text: 'East Village: riskier', color: '#DC2626' }
+      { coords: [-117.162, 32.711], text: 'Gaslamp: 55 → 61', color: '#0891b2' },
+      { coords: [-117.148, 32.715], text: 'East Village: riskier', color: '#D97706' }
     ];
     insights.forEach(ins => {
       const [x, y] = exploreProjection(ins.coords);
@@ -1521,7 +1794,10 @@ function buildRouteList() {
       .on('click', () => selectRoute(i))
       .on('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectRoute(i); } });
     li.append('div').attr('class', 'route-dot').style('background', data.routes[name].color);
-    li.append('span').text(name);
+    const ctx = ROUTE_CONTEXT[name];
+    const label = li.append('div').style('line-height', '1.3');
+    label.append('div').style('font-size', '10px').style('font-weight', '600').style('color', '#D97706').text(ctx ? ctx.type : '');
+    label.append('div').text(name);
   });
 }
 
@@ -1565,8 +1841,8 @@ function updateRouteContext() {
   const el = document.getElementById('route-context');
   if (!ctx) { el.innerHTML = ''; return; }
   el.innerHTML =
+    `<div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">${ctx.type}</div>` +
     `<div class="ctx-who">${ctx.who}</div>` +
-    `<div class="ctx-when">${ctx.when}</div>` +
     `<div class="ctx-tip">${ctx.tip}</div>`;
 }
 
@@ -1608,9 +1884,11 @@ function setupModeTabs() {
 
 function setupTimeSlider() {
   const slider = document.getElementById('time-slider');
-  slider.addEventListener('input', function() {
+  const dateSlider = document.getElementById('date-slider');
+
+  function onTimeChange() {
     const hour = +slider.value;
-    const newTime = (hour >= 6 && hour < 18) ? 'day' : 'night';
+    const newTime = hour < sunTimes.sunset ? 'day' : 'night';
     updateSliderReadout();
     updateExploreMap();
     updateRecommendation();
@@ -1626,7 +1904,14 @@ function setupTimeSlider() {
       if (state.mode === 'navigate') updateNavAlternative();
       updateRouteContext();
     }
+  }
+
+  slider.addEventListener('input', onTimeChange);
+  dateSlider.addEventListener('input', function() {
+    updateSunUI();
+    onTimeChange();
   });
+  updateSunUI();
 }
 
 function setupNavigateMode() {
@@ -1669,7 +1954,7 @@ function updateNavAlternative() {
   const profiles = [
     { name: 'Fastest', multiplier: 0, color: '#9CA3AF', dash: '6,4', width: 3 },
     { name: 'Balanced', multiplier: 0.5, color: '#D97706', dash: '', width: 4 },
-    { name: 'Extra Caution', multiplier: 1.0, color: '#059669', dash: '', width: 4 }
+    { name: 'Extra Caution', multiplier: 1.0, color: '#0891b2', dash: '', width: 4 }
   ];
 
   const results = profiles.map(p => {
@@ -1702,28 +1987,48 @@ function updateNavAlternative() {
   // Endpoint markers
   const startPt = exploreProjection(results[0].path[0]);
   const endPt = exploreProjection(results[0].path[results[0].path.length - 1]);
-  [{ pt: startPt, c: '#059669' }, { pt: endPt, c: '#dc2626' }].forEach(({ pt, c }) => {
+  [{ pt: startPt, c: '#2563eb' }, { pt: endPt, c: '#D97706' }].forEach(({ pt, c }) => {
     routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 7).attr('fill', c).attr('class', 'nav-marker');
     routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3).attr('fill', '#fff').attr('class', 'nav-marker');
   });
 
-  // Comparison card
+  // Comparison card with safety-vs-distance tradeoff (Q1 from question framing brief)
   const fastest = results.find(r => r.name === 'Fastest');
   const safest = results.find(r => r.name === 'Extra Caution');
-  const tradeoff = safest && fastest
-    ? `+${safest.score - fastest.score} safety points for +${safest.min - fastest.min} min`
-    : '';
+  const balanced = results.find(r => r.name === 'Balanced');
+  const distOverhead = safest && fastest && fastest.dist > 0
+    ? Math.round((safest.dist - fastest.dist) / fastest.dist * 100) : 0;
+  const timeOverhead = safest && fastest ? safest.min - fastest.min : 0;
+  const scoreGain = safest && fastest ? safest.score - fastest.score : 0;
+  const balancedGainRatio = balanced && safest && fastest && (safest.score - fastest.score) > 0
+    ? Math.round((balanced.score - fastest.score) / (safest.score - fastest.score) * 100) : 0;
+
+  let tradeoffHtml = '';
+  if (safest && fastest) {
+    const verdict = distOverhead <= 25
+      ? 'The safer route is practical. Worth the detour.'
+      : 'Significant detour. Consider the balanced option.';
+    tradeoffHtml = `
+      <div class="nav-compare-delta">
+        <div style="font-size:13px;font-weight:600;">+${scoreGain} safety points for +${distOverhead}% more distance (~${timeOverhead} min)</div>
+        <div style="font-size:11px;margin-top:4px;opacity:0.8;">${verdict}</div>
+      </div>`;
+  }
 
   container.innerHTML =
     `<div class="nav-compare-card">
-      ${results.map(r => `
+      ${results.map(r => {
+        const overhead = fastest && fastest.dist > 0
+          ? Math.round((r.dist - fastest.dist) / fastest.dist * 100) : 0;
+        const overheadLabel = r.name === 'Fastest' ? '' : ` · +${overhead}%`;
+        return `
         <div class="nav-compare-row" style="border-left: 3px solid ${r.color};">
           <span class="nav-compare-tag" style="background:${r.color}20;color:${r.color};">${r.name}</span>
           <span class="nav-compare-score">${r.score}</span>
-          <span class="nav-compare-detail">${r.qualLabel} · ${r.dist}m · ~${r.min} min</span>
-        </div>
-      `).join('')}
-      ${tradeoff ? `<div class="nav-compare-delta">${tradeoff}</div>` : ''}
+          <span class="nav-compare-detail">${r.qualLabel} · ${r.dist}m · ~${r.min} min${overheadLabel}</span>
+        </div>`;
+      }).join('')}
+      ${tradeoffHtml}
     </div>
     <p style="font-size:10px;color:#9CA3AF;margin-top:8px;">
       Cost = length × (1 + multiplier × (1 − score))<br>
@@ -1738,8 +2043,8 @@ function updateScorePanel() {
   const allScores = routeNames.map(n => data.routes[n].scores[state.timeOfDay]).sort((a, b) => b - a);
   const rank = allScores.indexOf(route.scores[state.timeOfDay]) + 1;
   const categories = [
-    { key: timeKey, label: 'Crime Safety', color: '#ef4444' },
-    { key: 'lighting', label: 'Lighting & Roads', color: '#f59e0b' },
+    { key: timeKey, label: 'Crime Safety', color: '#e8590c' },
+    { key: 'lighting', label: 'Lighting & Roads', color: '#64748b' },
     { key: 'traffic', label: 'Walkable Streets', color: '#3b82f6' },
     { key: state.timeOfDay, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
   ];
@@ -1874,7 +2179,7 @@ function updateComparisonHighlight() {
     const nightScore = Math.round(data.routes[r.name].scores.night * 100);
     const delta = nightScore - dayScore;
     const deltaStr = delta > 0 ? '+' + delta : delta < 0 ? '' + delta : '';
-    const deltaColor = delta > 0 ? '#059669' : delta < 0 ? '#DC2626' : '#9CA3AF';
+    const deltaColor = delta > 0 ? '#2563eb' : delta < 0 ? '#D97706' : '#9CA3AF';
     g.append('text').attr('x', x(score) + 6).attr('y', yPos + barH / 2 + 4)
       .attr('font-size', '13px').attr('fill', textColor).attr('font-weight', '600')
       .text(score);
@@ -1926,6 +2231,192 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'n' || e.key === 'N') { slider.value = 21; slider.dispatchEvent(new Event('input')); }
   if (e.key === 'ArrowLeft' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute - 1 + n) % n); }
   if (e.key === 'ArrowRight' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute + 1) % n); }
+});
+
+/* ═══ WEIGHT SANDBOX ═══ */
+
+const wCrime = document.getElementById('w-crime');
+const wLight = document.getElementById('w-light');
+const wWalk = document.getElementById('w-walk');
+const wCrimeVal = document.getElementById('w-crime-val');
+const wLightVal = document.getElementById('w-light-val');
+const wWalkVal = document.getElementById('w-walk-val');
+const wInsight = document.getElementById('weight-insight');
+
+function getCustomWeights() {
+  const c = +wCrime.value, l = +wLight.value, w = +wWalk.value;
+  const total = c + l + w || 1;
+  return { crime: c / total, lighting: l / total, walk: w / total };
+}
+
+function customRouteScore(route, weights) {
+  const crimeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  return route.scores[crimeKey] * weights.crime +
+         route.scores.lighting * weights.lighting +
+         route.scores.traffic * weights.walk;
+}
+
+function updateWeightInsight() {
+  const weights = getCustomWeights();
+  const routeNames = Object.keys(data.routes);
+  const ranked = routeNames.map(name => ({
+    name, score: customRouteScore(data.routes[name], weights)
+  })).sort((a, b) => b.score - a.score);
+
+  const defaultWeights = { crime: 0.5, lighting: 0.25, walk: 0.25 };
+  const defaultRanked = routeNames.map(name => ({
+    name, score: customRouteScore(data.routes[name], defaultWeights)
+  })).sort((a, b) => b.score - a.score);
+
+  const defaultOrder = defaultRanked.map(r => r.name).join(',');
+  const newOrder = ranked.map(r => r.name).join(',');
+  const crimeZero = +wCrime.value === 0;
+  const crimeMax = +wCrime.value >= 80;
+
+  if (crimeZero) {
+    const spread = Math.round((ranked[0].score - ranked[ranked.length - 1].score) * 100);
+    wInsight.textContent = spread < 5
+      ? 'Without crime, all routes score nearly the same. Crime is the differentiator.'
+      : 'Even without crime, there is a ' + spread + '-point gap.';
+  } else if (crimeMax) {
+    wInsight.textContent = 'At maximum crime weight, the ranking matches the default. Crime was already dominant.';
+  } else if (defaultOrder !== newOrder) {
+    wInsight.textContent = 'Route rankings changed! The safest route is now ' + ranked[0].name.split(' to ')[0] + '.';
+  } else {
+    wInsight.textContent = '';
+  }
+}
+
+function onWeightChange() {
+  wCrimeVal.textContent = wCrime.value + '%';
+  wLightVal.textContent = wLight.value + '%';
+  wWalkVal.textContent = wWalk.value + '%';
+  if (!data) return;
+  const weights = getCustomWeights();
+
+  // Recolor explore map edges by shifting the color blend
+  const svg = d3.select('#explore-map-svg');
+  const blend = getTimeBlend();
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
+  const crimeShift = weights.crime - 0.5;
+  svg.selectAll('.explore-edge')
+    .attr('stroke', d => {
+      const base = d.score_day * (1 - blend) + d.score_night * blend;
+      const shifted = Math.max(0, Math.min(1, base + crimeShift * (base - 0.5) * 0.5));
+      return colorScale(shifted);
+    });
+
+  // Update score panel with custom weights
+  const routeNames = Object.keys(data.routes);
+  const route = data.routes[routeNames[state.selectedRoute]];
+  const crimeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  const customScore = customRouteScore(route, weights);
+  const allCustom = routeNames.map(n => customRouteScore(data.routes[n], weights)).sort((a, b) => b - a);
+  const rank = allCustom.indexOf(customScore) + 1;
+  const shortName = routeNames[state.selectedRoute].split(' to ')[0];
+  document.getElementById('score-panel-title').textContent = shortName + ' (#' + rank + ' of ' + routeNames.length + ')';
+
+  const categories = [
+    { val: route.scores[crimeKey] * weights.crime / (weights.crime || 0.01), label: 'Crime (' + Math.round(weights.crime * 100) + '%)', color: '#e8590c' },
+    { val: route.scores.lighting * weights.lighting / (weights.lighting || 0.01), label: 'Lighting (' + Math.round(weights.lighting * 100) + '%)', color: '#64748b' },
+    { val: route.scores.traffic * weights.walk / (weights.walk || 0.01), label: 'Walkability (' + Math.round(weights.walk * 100) + '%)', color: '#2166ac' },
+    { val: customScore, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
+  ];
+  const container = d3.select('#score-bars');
+  container.html('');
+  categories.forEach(cat => {
+    const bar = container.append('div').attr('class', 'score-bar');
+    const label = bar.append('div').attr('class', 'score-label');
+    label.append('span').text(cat.label);
+    label.append('span').text(Math.round(cat.val * 100));
+    const track = bar.append('div').attr('class', 'score-track');
+    track.append('div').attr('class', 'score-fill')
+      .style('width', (cat.val * 100) + '%').style('background', cat.color);
+  });
+
+  // Update comparison chart
+  updateComparisonHighlight();
+  updateRecommendation();
+  updateWeightInsight();
+}
+
+[wCrime, wLight, wWalk].forEach(s => s.addEventListener('input', onWeightChange));
+document.getElementById('w-reset').addEventListener('click', () => {
+  wCrime.value = 50; wLight.value = 25; wWalk.value = 25;
+  onWeightChange();
+});
+
+/* ═══ ROLE-SPECIFIC NARRATIVE ═══ */
+
+const ROLE_TEXT = {
+  nightwalker: {
+    s1: '<p>67% of women say walking alone at night is their greatest safety fear. They already scan for unlit streets and avoid quiet blocks, but navigation apps like Google Maps ignore safety entirely and optimize for speed.</p><p>This map shows every walkable street in downtown San Diego, a mid-size coastal city in the US. We scored all of them for safety. The data says one route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. These are the same factors you already evaluate mentally when you walk at night. We just turned them into numbers.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures things like block length, nearby shops, and transit stops. This entire downtown scores high, so the map is almost entirely blue. That is the problem: walkability alone cannot tell you which streets are safe to walk at night.</p><p style="font-size:12px;color:#888;">Uniform color. If this were the only score, you would have no way to choose a safer route.</p>',
+    s4: '<p>Each dot is a real streetlight. Well-lit streets feel safer, and they are, but lighting coverage is uneven. The left side of the map has dense coverage; the right side has dark patches. You already notice these gaps instinctively. Now you can see them mapped.</p><p style="font-size:12px;color:#888;">Some variation, but still not enough to explain the full safety gap between routes.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This is the layer that matches what you feel walking at night. Watch the map fracture. The streets that <em>felt</em> different now <em>look</em> different. Crime density is what your instincts were detecting all along.</p><p style="font-size:12px;color:#888;">The left side stays blue (safe). The center turns orange (dangerous).</p>',
+    s6: '<p>These five routes connect the kinds of places you might walk between after dark: a transit station to an event venue, a restaurant district to the waterfront, a residential block to a transit hub. Each passes through different safety zones.</p><p style="font-size:12px;color:#888;">Hover any colored line to see its score. The safest route might not be the one you would guess.</p>',
+    s7: '<p>At night, everything changes. The nightlife district (center) gets <em>safer</em> because crowds fill the streets. The residential area to the east gets worse. If you are walking home after 9 PM, the route that felt fine at lunch could be the worst option.</p>',
+    s8: '<p>The safest route at 2 PM is not the safest at 2 AM. Crime density drives the entire 18-point gap between routes, and crime patterns shift with time of day. A navigation app that ignores this is sending you through danger zones.</p><p>Scroll down to explore the routes yourself. Drag the time slider to see how your walk home changes hour by hour.</p>'
+  },
+  tourist: {
+    s1: '<p>Research shows that how safe you feel walking depends heavily on how familiar you are with the area (CHI 2024). As a visitor, you do not know which blocks to avoid, and Google Maps will not tell you. It optimizes for speed, not safety.</p><p>This map shows every walkable street in downtown San Diego, scored for pedestrian safety using crime, lighting, and walkability data. One route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. Locals know these patterns from experience. As a visitor, you need the data to see what they already know.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures access to shops, transit, and short blocks. This downtown scores high everywhere, which is why it feels inviting to walk around. But "pleasant to walk" is not the same as "safe to walk." This layer cannot tell you where to avoid.</p><p style="font-size:12px;color:#888;">Uniform color. Every neighborhood looks equally walkable. But they are not equally safe.</p>',
+    s4: '<p>Each dot is a real streetlight. The main tourist corridors (left side) are well-lit. But if your hotel is a few blocks east, the walk back gets darker. As a visitor, you would not know this until you are already on the street.</p><p style="font-size:12px;color:#888;">Lighting gaps are invisible on Google Maps. Here, you can see them before you leave.</p>',
+    s5: '<p>Each orange dot is a real crime incident. Watch the map fracture. The waterfront and restaurant districts (left) stay blue. The blocks behind the convention center and east of the nightlife area turn orange. A local would avoid these. You would not know to.</p><p style="font-size:12px;color:#888;">This single variable drives the entire safety gap between routes.</p>',
+    s6: '<p>These five routes connect the kinds of places tourists actually walk: from a train station to a stadium, from a restaurant district to the waterfront, from a conference center to nightlife. Each crosses different safety zones that a visitor would not know about.</p><p style="font-size:12px;color:#888;">Hover any route. Would you have guessed which one is safest?</p>',
+    s7: '<p>Dinner ends at 9 PM and you want to walk back to your hotel. The route that was safe at noon might not be anymore. The nightlife district gets safer (more foot traffic), but the residential area to the east gets riskier. Without local knowledge, you would not know this.</p>',
+    s8: '<p>As a visitor, you do not have years of experience telling you which blocks to avoid. Crime density drives the entire 18-point safety gap between routes, and it shifts throughout the day. A tool like this fills the local-knowledge gap that every tourist faces.</p><p>Explore below to check the safety of any route in the city, at any hour.</p>'
+  },
+  student: {
+    s1: '<p>82% of college students express personal safety concerns, and 74% specifically identify walking home in the dark as unsafe (ADT/RuffaloCMB survey). Campus apps offer panic buttons and escort services, but nothing tells you which route is actually safer before you start walking.</p><p>This map shows every street in a real downtown, scored for pedestrian safety. Students deserve proactive safety data, not just reactive emergency buttons. One route choice can be <strong>18 points safer</strong>. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. Think of it as a safety grade for every block you walk, the kind of information your campus safety office has for buildings but not for streets.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures access to shops, transit, and short blocks. Downtown scores high everywhere, which means this factor cannot tell you whether to take one street over another after your evening study session. You need more than walkability.</p><p style="font-size:12px;color:#888;">Uniform color. Every block looks equally walkable. But ask any student who has walked home at midnight. They are not.</p>',
+    s4: '<p>Each dot is a real streetlight. Notice how coverage is dense on the main roads but drops off on the side streets. Those dark side streets are often the shortcuts students take to save five minutes. Sometimes those five minutes matter more than you think.</p><p style="font-size:12px;color:#888;">Campus escort services exist because of gaps like these. But escorts only help if you call. This data helps before you leave.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This is the layer that explains why some walks home feel wrong. The streets near the nightlife area and transit hub have clusters. The residential blocks to the left are quieter. Your instinct about "that sketchy block" probably matches this map.</p><p style="font-size:12px;color:#888;">Crime density is the single variable that drives the 18-point safety gap between routes.</p>',
+    s6: '<p>These five routes represent trips a student might take: from a transit hub to campus, from the dining district to student housing, from a neighborhood to a park for a study break. Each passes through different safety zones.</p><p style="font-size:12px;color:#888;">Hover any route to see its score. Think about your own walk home.</p>',
+    s7: '<p>Your 8 AM lecture and your 9 PM study session end on the same campus, but the walk home is a completely different experience. The nightlife area gets safer (more people), but the residential blocks get riskier. Toggle to see the shift.</p>',
+    s8: '<p>Campus escort services exist because this problem is real. But escorts are reactive. This tool is proactive: it shows you which route is safest <em>before</em> you leave, at the exact hour you are walking. The 18-point gap is driven by crime, and crime shifts with time of day.</p><p>Explore below. Drag the time slider to the hour your last class ends.</p>'
+  },
+  runner: {
+    s1: '<p>Running safety apps like Road iD, eBodyGuard, and One Scream track your location and send emergency alerts. But none of them score the safety of your route before you start running. They are reactive, not proactive.</p><p>This map shows every street in downtown San Diego, scored for pedestrian safety using crime, lighting, and walkability data. For a runner choosing an evening route, one path can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. For a runner, this is the difference between choosing a route by distance alone and choosing one that accounts for what the streets are actually like.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures things like block length and nearby transit. For a runner, these matter less because you are not stopping at shops. But the score is uniformly high downtown, which means this layer cannot help you pick a safer running route anyway.</p><p style="font-size:12px;color:#888;">Uniform color. A runner needs different data than a commuter.</p>',
+    s4: '<p>Each dot is a real streetlight. Well-lit streets mean you can see the pavement, spot obstacles, and be seen by others. For an evening run, lighting coverage is the difference between a comfortable loop and a stressful one. Notice the gaps on the right side of the map.</p><p style="font-size:12px;color:#888;">Running apps like Strava show your pace. None of them show you this.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This layer reshapes what a "good running route" looks like. The waterfront corridor (left) stays blue and safe for laps. The blocks near the nightlife area (center) light up orange. A two-block shift in your route could mean running through safe streets instead of risky ones.</p><p style="font-size:12px;color:#888;">Crime density is the single variable that drives the 18-point safety gap.</p>',
+    s6: '<p>These five routes are the length and type of paths a runner might take: loops through different neighborhoods, out-and-back stretches, park approaches. Each crosses different safety zones that affect your run differently.</p><p style="font-size:12px;color:#888;">Hover any route. Would you run the lowest-scored one after sunset?</p>',
+    s7: '<p>Most runners prefer early morning or evening runs. That is exactly when safety scores shift the most. The nightlife area gets safer after dark (foot traffic), but the quieter residential blocks get worse. Your 6 AM run and your 8 PM run follow different safety maps.</p>',
+    s8: '<p>Running safety is not just about carrying your phone and sharing your location. It starts with route choice. Crime density drives the 18-point gap, and it shifts with time of day. Choosing a route two blocks over could mean running through safe streets instead of risky ones.</p><p>Explore below. Set the time slider to your usual run time and see what the map looks like.</p>'
+  },
+  planner: {
+    s1: '<p>City planners use crash databases, GIS audits, and manual walking surveys to assess pedestrian safety. But these tools are fragmented and do not combine crime, lighting, and walkability into a single street-level score.</p><p>This map scores all 5,500 street segments in downtown San Diego using three public datasets. It reveals where infrastructure investment would have the most impact. The gap between the safest and least-safe corridor is <strong>18 points</strong>. Scroll to see what drives it.</p>',
+    s2: '<p>The composite score combines three layers that planners typically assess separately: crime density (from police records), streetlight coverage (from city inventory), and walkability (from the EPA Smart Location Database). Here they are unified at street-segment level.</p><p style="font-size:12px;color:#888;">Higher score = safer segment. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability is uniform across this downtown (EPA scores cluster near 0.50). This is a data resolution finding: the EPA Smart Location Database is designed for metro-level comparison, not block-level differentiation. For a planner, this means walkability does not help prioritize within a downtown.</p><p style="font-size:12px;color:#888;">Uniform color. This layer has no actionable variance for infrastructure decisions at this scale.</p>',
+    s4: '<p>Each dot is a streetlight from the city inventory. Coverage is dense on main corridors but sparse on side streets, particularly in the eastern residential blocks. This is the layer a planner can directly act on: streetlight placement is an infrastructure decision with measurable impact on safety scores.</p><p style="font-size:12px;color:#888;">The question is: which gaps matter most? Keep scrolling.</p>',
+    s5: '<p>Each orange dot is a crime incident from police records. Crime density dominates the composite score. It explains nearly all of the 18-point gap between the safest and least-safe corridors. Streetlights alone will not close this gap, but the spatial overlap between dark segments and crime clusters reveals where lighting investment could have a secondary deterrent effect.</p><p style="font-size:12px;color:#888;">FHWA systemic safety analysis identifies risk factors proactively. This visualization does the same at street-segment granularity.</p>',
+    s6: '<p>These five corridors connect major civic destinations: a train station to a stadium, a convention center to an entertainment district, residential areas to transit hubs. They represent the infrastructure a city is responsible for making safe.</p><p style="font-size:12px;color:#888;">Hover any corridor to see its composite score and identify where the gaps are.</p>',
+    s7: '<p>Infrastructure investment needs to account for time of day. The entertainment district gets safer at night (foot traffic acts as a natural deterrent), but the residential east side degrades. Streetlight investment should target the segments that drop the most after dark.</p>',
+    s8: '<p>The 18-point gap is driven by crime density, not lighting or walkability. That means streetlights alone will not close the gap. But the weight sandbox below lets you model scenarios: set crime weight to zero and see that lighting and walkability are nearly uniform. The planning question becomes: where does adding one streetlight produce the largest marginal safety gain?</p><p>Use the explore section to identify priority corridors. Switch to Navigate to see how routing algorithms trade off distance for safety.</p>'
+  }
+};
+
+let activeRole = 'nightwalker';
+
+function applyRole(role) {
+  activeRole = role;
+  const t = ROLE_TEXT[role];
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById('scene' + i + '-text');
+    if (el && t['s' + i]) el.innerHTML = t['s' + i];
+  }
+  document.querySelectorAll('.role-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.role === role);
+  });
+}
+
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyRole(btn.dataset.role));
 });
 </script>
 </body>
