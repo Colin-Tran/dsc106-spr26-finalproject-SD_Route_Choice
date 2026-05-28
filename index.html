@@ -58,7 +58,9 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
   max-width: 320px;
 }
 .step.is-active { opacity: 1; border-left: 3px solid #D97706; }
-.step h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.step h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e5e7eb; font-size: 11px; color: #555; flex-shrink: 0; }
+.step.is-active .step-num { background: #D97706; color: #fff; }
 .step p { font-size: 14px; color: #333; margin-bottom: 8px; line-height: 1.5; }
 .step p:last-child { margin-bottom: 0; }
 
@@ -374,37 +376,37 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   </div>
   <div class="steps-container">
     <div class="step" data-scene="1">
-      <h3>The Question</h3>
+      <h3><span class="step-num">1</span>The Question</h3>
       <p>You leave Petco Park after a night game. Do you cut through East Village or loop through the Gaslamp? The data says one choice is 18 points safer. Scroll to see why.</p>
     </div>
 
     <div class="step" data-scene="2">
-      <h3>How We Measure Safety</h3>
+      <h3><span class="step-num">2</span>How We Measure Safety</h3>
       <p>Each of the 5,500 street segments gets a composite score from three public datasets. See the formula on the map.</p>
     </div>
 
     <div class="step" data-scene="3">
-      <h3>Walkable Streets</h3>
+      <h3><span class="step-num">3</span>Walkable Streets</h3>
       <p>Short blocks, shops at street level, bus stops nearby. Downtown has all of this everywhere. The map is almost entirely blue. If this were all that mattered, every route would be equally safe.</p>
     </div>
 
     <div class="step" data-scene="4">
-      <h3>Lighting &amp; Roads</h3>
+      <h3><span class="step-num">4</span>Lighting &amp; Roads</h3>
       <p>Each yellow dot is a real streetlight. Coverage is dense on the main corridors but thins out in East Village. Still not enough variation to explain the safety gap.</p>
     </div>
 
     <div class="step" data-scene="5">
-      <h3>Crime Density</h3>
+      <h3><span class="step-num">5</span>Crime Density</h3>
       <p>This is the layer that breaks the pattern. Watch the map fracture from near-uniform blue into reds and blues. Crime drives the entire safety gap between routes.</p>
     </div>
 
     <div class="step" data-scene="6">
-      <h3>Five Routes Compared</h3>
+      <h3><span class="step-num">6</span>Five Routes Compared</h3>
       <p>These connect real destinations: the trolley station to the ballpark, Gaslamp to the Convention Center, Little Italy to the waterfront. Hover over a route to see its score.</p>
     </div>
 
     <div class="step" data-scene="7">
-      <h3>Day vs. Night</h3>
+      <h3><span class="step-num">7</span>Day vs. Night</h3>
       <p>The Gaslamp gets <em>safer</em> at night. More foot traffic, more eyes on the street. East Village goes the other direction. Toggle to see the shift.</p>
       <div class="inline-toggle" id="scroll-time-toggle">
         <button class="active" data-time="day"><span class="time-icon">&#9728;</span>Day</button>
@@ -413,7 +415,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     </div>
 
     <div class="step" data-scene="8">
-      <h3>What This Means</h3>
+      <h3><span class="step-num">8</span>What This Means</h3>
       <p>The 18-point gap is driven entirely by crime, not lighting or street design. And crime shifts with time of day. The safest route at 2 PM is not the safest at 2 AM. Explore below to find your own.</p>
     </div>
   </div>
