@@ -92,6 +92,40 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .inline-toggle { display: inline-flex; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin: 8px 0; }
 .inline-toggle button { padding: 6px 16px; font-size: 13px; border: none; background: #fff; cursor: pointer; transition: all 0.15s; }
 .inline-toggle button.active { background: #2d3748; color: #fff; font-weight: 500; }
+.inline-toggle .time-icon { font-size: 15px; vertical-align: middle; margin-right: 4px; }
+
+/* ── Time slider (explore) ── */
+.time-slider-wrap { position: relative; height: 36px; border-radius: 18px; background: #e2e8f0; cursor: pointer; overflow: hidden; user-select: none; }
+.time-slider-fill { position: absolute; top: 0; left: 0; width: 50%; height: 100%; border-radius: 18px; background: #fbbf24; transition: all 0.4s ease; }
+.time-slider-wrap.night .time-slider-fill { left: 50%; background: #1e3a5f; }
+.time-slider-labels { position: relative; display: flex; height: 100%; z-index: 1; }
+.time-slider-label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 600; transition: color 0.3s; }
+.time-slider-label.day-label { color: #92400e; }
+.time-slider-label.night-label { color: #64748b; }
+.time-slider-wrap.night .time-slider-label.day-label { color: #64748b; }
+.time-slider-wrap.night .time-slider-label.night-label { color: #e2e8f0; }
+
+/* ── Mode switcher ── */
+.mode-tabs { display: flex; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+.mode-tab { flex: 1; padding: 8px; font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; border: none; background: #fff; color: #555; transition: all 0.15s; }
+.mode-tab.active { background: #2d3748; color: #fff; }
+
+/* ── Navigate mode ── */
+.nav-panel { font-size: 13px; color: #444; }
+.nav-instruction { font-size: 12px; color: #888; margin-bottom: 12px; line-height: 1.5; }
+.nav-point { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; background: #f7fafc; border: 1px solid #e2e8f0; }
+.nav-point .nav-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.nav-point .nav-dot.start { background: #16a34a; }
+.nav-point .nav-dot.end { background: #dc2626; }
+.nav-point .nav-text { font-size: 12px; color: #555; }
+.nav-point .nav-text.set { color: #1a1a1a; font-weight: 500; }
+.nav-clear { margin-top: 10px; padding: 7px 14px; font-size: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; color: #555; transition: all 0.15s; width: 100%; }
+.nav-clear:hover { background: #f5f5f5; }
+.nav-score-summary { margin-top: 14px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
+.nav-score-summary.risky { background: #fef2f2; border-color: #fecaca; }
+.nav-score-value { font-size: 22px; font-weight: 700; color: #16a34a; }
+.nav-score-summary.risky .nav-score-value { color: #dc2626; }
+.nav-score-label { font-size: 11px; color: #555; margin-top: 2px; }
 
 /* ── Scroll indicator ── */
 .scroll-cue {
@@ -344,8 +378,8 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       <p>Here is the surprise: the Gaslamp Quarter actually gets <em>safer</em> at night. More foot traffic, more nightlife, more eyes on the street. Its score jumps from 55 to 61.</p>
       <p>East Village moves the other direction. Meanwhile, the safest route (Little Italy to Seaport Village) barely budges: 73 to 72. It is the one path that stays safe around the clock.</p>
       <div class="inline-toggle" id="scroll-time-toggle">
-        <button class="active" data-time="day">Day</button>
-        <button data-time="night">Night</button>
+        <button class="active" data-time="day"><span class="time-icon">&#9728;</span>Day</button>
+        <button data-time="night"><span class="time-icon">&#9790;</span>Night</button>
       </div>
       <p class="scene-note">Toggle above to see the shift, or keep scrolling.</p>
     </div>
@@ -368,7 +402,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 </div>
 <div class="explore-section">
   <h2>Explore the Routes</h2>
-  <p class="explore-subtitle">Pick a corridor, toggle day vs. night, and see how safety shifts. Turn on crime or streetlight layers to see the raw data behind the scores.</p>
+  <p class="explore-subtitle">Browse suggested corridors or switch to Navigate mode to find the safest walking path between any two points. Toggle day vs. night to see how safety shifts.</p>
 
   <div class="route-rec" id="route-rec">
     <div class="rec-card safest">
@@ -394,15 +428,29 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       <div class="tooltip" id="explore-tooltip"></div>
     </div>
     <div class="controls">
-      <div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="suggested">Suggested Routes</button>
+        <button class="mode-tab" data-mode="navigate">Navigate</button>
+      </div>
+      <div id="suggested-panel">
         <h3>Select Route</h3>
         <ul class="route-list" id="route-list"></ul>
       </div>
+      <div id="navigate-panel" class="nav-panel" style="display:none;">
+        <p class="nav-instruction">Click two points on the map to find the safest walking path between them.</p>
+        <div class="nav-point"><div class="nav-dot start"></div><div class="nav-text" id="nav-start-label">Click map to set start</div></div>
+        <div class="nav-point"><div class="nav-dot end"></div><div class="nav-text" id="nav-end-label">Then click to set end</div></div>
+        <button class="nav-clear" id="nav-clear">Clear route</button>
+        <div id="nav-score-box"></div>
+      </div>
       <div>
         <h3>Time of Day</h3>
-        <div class="time-toggle">
-          <button class="time-btn active" data-time="day">Day</button>
-          <button class="time-btn" data-time="night">Night</button>
+        <div class="time-slider-wrap" id="time-slider">
+          <div class="time-slider-fill"></div>
+          <div class="time-slider-labels">
+            <div class="time-slider-label day-label">&#9728; Day</div>
+            <div class="time-slider-label night-label">Night &#9790;</div>
+          </div>
         </div>
       </div>
       <div>
@@ -446,16 +494,93 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 <footer>DSC 106 | Data Visualization, Spring 2026 | UC San Diego</footer>
 
 <script>
-const state = { selectedRoute: 0, timeOfDay: 'day', showEdges: true, showLights: false, showCrime: false, currentScene: 0 };
+const state = { selectedRoute: 0, timeOfDay: 'day', showEdges: true, showLights: false, showCrime: false, currentScene: 0, mode: 'suggested', navStart: null, navEnd: null, navStartIdx: -1, navEndIdx: -1 };
 let data = null;
 let scrollProjection = null;
 let exploreProjection = null;
+let graph = null;
 
 function getQualLabel(score) {
   if (score >= 0.8) return 'Low Risk';
   if (score >= 0.6) return 'Moderate';
   if (score >= 0.4) return 'Elevated';
   return 'High Risk';
+}
+
+/* ═══ GRAPH + PATHFINDING ═══ */
+
+function buildGraph(edges) {
+  const nodeMap = new Map();
+  const nodes = [];
+  const adj = [];
+  function nodeIdx(coords) {
+    const key = coords[0].toFixed(5) + ',' + coords[1].toFixed(5);
+    if (!nodeMap.has(key)) {
+      nodeMap.set(key, nodes.length);
+      nodes.push(coords);
+      adj.push([]);
+    }
+    return nodeMap.get(key);
+  }
+  edges.forEach(e => {
+    const from = nodeIdx(e.from);
+    const to = nodeIdx(e.to);
+    adj[from].push({ to, score_day: e.score_day, score_night: e.score_night, length: e.length });
+    adj[to].push({ to: from, score_day: e.score_day, score_night: e.score_night, length: e.length });
+  });
+  return { nodes, adj, nodeMap };
+}
+
+function findNearestNode(lngLat) {
+  let best = 0, bestD = Infinity;
+  graph.nodes.forEach((n, i) => {
+    const d = (n[0] - lngLat[0]) ** 2 + (n[1] - lngLat[1]) ** 2;
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+function dijkstraSafest(startIdx, endIdx) {
+  const n = graph.nodes.length;
+  const dist = new Float64Array(n).fill(Infinity);
+  const prev = new Int32Array(n).fill(-1);
+  const visited = new Uint8Array(n);
+  dist[startIdx] = 0;
+  const pq = [[0, startIdx]];
+  const scoreKey = state.timeOfDay === 'day' ? 'score_day' : 'score_night';
+  while (pq.length) {
+    let minI = 0;
+    for (let i = 1; i < pq.length; i++) { if (pq[i][0] < pq[minI][0]) minI = i; }
+    const [d, u] = pq.splice(minI, 1)[0];
+    if (visited[u]) continue;
+    visited[u] = 1;
+    if (u === endIdx) break;
+    for (const edge of graph.adj[u]) {
+      if (visited[edge.to]) continue;
+      const w = edge.length / Math.max(edge[scoreKey], 0.1);
+      const nd = dist[u] + w;
+      if (nd < dist[edge.to]) {
+        dist[edge.to] = nd;
+        prev[edge.to] = u;
+        pq.push([nd, edge.to]);
+      }
+    }
+  }
+  const path = [];
+  let cur = endIdx;
+  while (cur !== -1) { path.unshift(graph.nodes[cur]); cur = prev[cur]; }
+  if (path.length < 2 || path[0][0] !== graph.nodes[startIdx][0]) return null;
+
+  let totalLen = 0, weightedScore = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const k1 = path[i][0].toFixed(5) + ',' + path[i][1].toFixed(5);
+    const k2 = path[i + 1][0].toFixed(5) + ',' + path[i + 1][1].toFixed(5);
+    const idx1 = graph.nodeMap.get(k1);
+    const edge = graph.adj[idx1].find(e => e.to === graph.nodeMap.get(k2));
+    if (edge) { totalLen += edge.length; weightedScore += edge[scoreKey] * edge.length; }
+  }
+  const avgScore = totalLen > 0 ? weightedScore / totalLen : 0;
+  return { path, avgScore, totalLen };
 }
 
 async function init() {
@@ -471,10 +596,14 @@ async function init() {
   }
   const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
 
+  graph = buildGraph(data.edges);
   drawScrollMap(colorScale);
   drawExploreMap(colorScale);
   buildRouteList();
   buildExploreToggles();
+  setupModeTabs();
+  setupTimeSlider();
+  setupNavigateMode();
   drawComparisonChart();
   updateScorePanel();
   updateRecommendation();
@@ -811,16 +940,17 @@ function setupScrollObserver() {
 }
 
 function syncTimeToggles() {
-  d3.selectAll('.time-btn').classed('active', function() {
-    return d3.select(this).attr('data-time') === state.timeOfDay;
-  });
   d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
     return d3.select(this).attr('data-time') === state.timeOfDay;
   });
+  document.getElementById('time-slider').classList.toggle('night', state.timeOfDay === 'night');
   updateExploreMap();
   updateScorePanel();
   updateComparisonHighlight();
   updateRecommendation();
+  if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
+    runNavRoute();
+  }
 }
 
 function setupScrollTimeToggle() {
@@ -829,14 +959,15 @@ function setupScrollTimeToggle() {
     state.timeOfDay = time;
     d3.select('#scroll-time-toggle').selectAll('button').classed('active', false);
     d3.select(this).classed('active', true);
-    d3.selectAll('.time-btn').classed('active', function() {
-      return d3.select(this).attr('data-time') === time;
-    });
+    document.getElementById('time-slider').classList.toggle('night', time === 'night');
     if (state.currentScene === 7) setScene(7);
     updateExploreMap();
     updateScorePanel();
     updateComparisonHighlight();
     updateRecommendation();
+    if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
+      runNavRoute();
+    }
   });
 }
 
@@ -996,22 +1127,6 @@ function selectRoute(i) {
 }
 
 function buildExploreToggles() {
-  d3.selectAll('.time-btn').on('click', function() {
-    state.timeOfDay = d3.select(this).attr('data-time');
-    d3.selectAll('.time-btn').classed('active', false);
-    d3.selectAll('.time-btn').each(function() {
-      d3.select(this).classed('active', d3.select(this).attr('data-time') === state.timeOfDay);
-    });
-    d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
-      return d3.select(this).attr('data-time') === state.timeOfDay;
-    });
-    if (state.currentScene === 7) setScene(7);
-    updateExploreMap();
-    updateScorePanel();
-    updateComparisonHighlight();
-    updateRecommendation();
-  });
-
   ['edges', 'lights', 'crime'].forEach(key => {
     d3.select('#tog-' + key)
       .on('click', function() {
@@ -1027,6 +1142,152 @@ function buildExploreToggles() {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); d3.select(this).dispatch('click'); }
       });
   });
+}
+
+function setupModeTabs() {
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      state.mode = mode;
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+      document.getElementById('suggested-panel').style.display = mode === 'suggested' ? '' : 'none';
+      document.getElementById('navigate-panel').style.display = mode === 'navigate' ? '' : 'none';
+      document.getElementById('score-panel').style.display = mode === 'suggested' ? '' : 'none';
+      if (mode === 'suggested') {
+        clearNavRoute();
+        updateExploreMap();
+        updateExploreMarkers();
+      } else {
+        d3.select('#explore-map-svg').selectAll('.explore-route').attr('stroke-opacity', 0.2).attr('stroke-width', 2);
+        d3.select('#explore-map-svg').selectAll('.explore-halo').attr('stroke-width', 0);
+        d3.select('#explore-map-svg').selectAll('.explore-marker').remove();
+      }
+    });
+  });
+}
+
+function setupTimeSlider() {
+  const slider = document.getElementById('time-slider');
+  slider.addEventListener('click', () => {
+    const newTime = state.timeOfDay === 'day' ? 'night' : 'day';
+    state.timeOfDay = newTime;
+    slider.classList.toggle('night', newTime === 'night');
+    d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
+      return d3.select(this).attr('data-time') === newTime;
+    });
+    if (state.currentScene === 7) setScene(7);
+    updateExploreMap();
+    updateScorePanel();
+    updateComparisonHighlight();
+    updateRecommendation();
+    if (state.mode === 'navigate' && state.navStartIdx >= 0 && state.navEndIdx >= 0) {
+      runNavRoute();
+    }
+  });
+}
+
+function setupNavigateMode() {
+  const svg = d3.select('#explore-map-svg');
+  svg.on('click', function(event) {
+    if (state.mode !== 'navigate') return;
+    const [mx, my] = d3.pointer(event);
+    const lngLat = exploreProjection.invert([mx, my]);
+    if (!lngLat) return;
+    const nodeIdx = findNearestNode(lngLat);
+    const nodeCoords = graph.nodes[nodeIdx];
+
+    if (state.navStartIdx < 0) {
+      state.navStartIdx = nodeIdx;
+      state.navStart = nodeCoords;
+      document.getElementById('nav-start-label').textContent = 'Start set';
+      document.getElementById('nav-start-label').classList.add('set');
+      drawNavMarkers();
+    } else if (state.navEndIdx < 0) {
+      state.navEndIdx = nodeIdx;
+      state.navEnd = nodeCoords;
+      document.getElementById('nav-end-label').textContent = 'End set';
+      document.getElementById('nav-end-label').classList.add('set');
+      drawNavMarkers();
+      runNavRoute();
+    }
+  });
+
+  document.getElementById('nav-clear').addEventListener('click', () => {
+    clearNavRoute();
+  });
+}
+
+function clearNavRoute() {
+  state.navStart = null;
+  state.navEnd = null;
+  state.navStartIdx = -1;
+  state.navEndIdx = -1;
+  document.getElementById('nav-start-label').textContent = 'Click map to set start';
+  document.getElementById('nav-start-label').classList.remove('set');
+  document.getElementById('nav-end-label').textContent = 'Then click to set end';
+  document.getElementById('nav-end-label').classList.remove('set');
+  document.getElementById('nav-score-box').innerHTML = '';
+  const svg = d3.select('#explore-map-svg');
+  svg.selectAll('.nav-marker').remove();
+  svg.selectAll('.nav-route').remove();
+}
+
+function drawNavMarkers() {
+  const svg = d3.select('#explore-map-svg');
+  svg.selectAll('.nav-marker').remove();
+  const layer = svg.select('#explore-routes');
+  if (state.navStart) {
+    const [x, y] = exploreProjection(state.navStart);
+    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 9).attr('fill', '#16a34a').attr('class', 'nav-marker');
+    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 4).attr('fill', '#fff').attr('class', 'nav-marker');
+    layer.append('text').attr('x', x + 12).attr('y', y + 5).text('Start')
+      .attr('font-size', '13px').attr('font-weight', '700').attr('fill', '#16a34a')
+      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
+      .attr('class', 'nav-marker');
+  }
+  if (state.navEnd) {
+    const [x, y] = exploreProjection(state.navEnd);
+    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 9).attr('fill', '#dc2626').attr('class', 'nav-marker');
+    layer.append('circle').attr('cx', x).attr('cy', y).attr('r', 4).attr('fill', '#fff').attr('class', 'nav-marker');
+    layer.append('text').attr('x', x + 12).attr('y', y + 5).text('End')
+      .attr('font-size', '13px').attr('font-weight', '700').attr('fill', '#dc2626')
+      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
+      .attr('class', 'nav-marker');
+  }
+}
+
+function runNavRoute() {
+  const result = dijkstraSafest(state.navStartIdx, state.navEndIdx);
+  const svg = d3.select('#explore-map-svg');
+  svg.selectAll('.nav-route').remove();
+
+  if (!result) {
+    document.getElementById('nav-score-box').innerHTML = '<div style="padding:8px;font-size:12px;color:#dc2626;">No path found between these points.</div>';
+    return;
+  }
+
+  const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
+  const routeLayer = svg.select('#explore-routes');
+  routeLayer.insert('path', '.nav-marker')
+    .datum(result.path).attr('d', line)
+    .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 10)
+    .attr('stroke-linecap', 'round').attr('class', 'nav-route');
+  routeLayer.insert('path', '.nav-marker')
+    .datum(result.path).attr('d', line)
+    .attr('fill', 'none').attr('stroke', '#16a34a').attr('stroke-width', 5)
+    .attr('stroke-linecap', 'round').attr('class', 'nav-route')
+    .attr('stroke-dasharray', function() { return this.getTotalLength(); })
+    .attr('stroke-dashoffset', function() { return this.getTotalLength(); })
+    .transition().duration(800).attr('stroke-dashoffset', 0);
+
+  const score = Math.round(result.avgScore * 100);
+  const dist = Math.round(result.totalLen);
+  const risky = score < 60;
+  document.getElementById('nav-score-box').innerHTML =
+    `<div class="nav-score-summary${risky ? ' risky' : ''}">
+      <div class="nav-score-value">${score}/100</div>
+      <div class="nav-score-label">${getQualLabel(result.avgScore)} &middot; ${dist}m &middot; ${state.timeOfDay}</div>
+    </div>`;
 }
 
 function updateScorePanel() {
