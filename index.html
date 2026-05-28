@@ -220,6 +220,30 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 .score-qual { font-size: 10px; color: #666; margin-top: 1px; }
 
+/* ── Route recommendation banner ── */
+.route-rec {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.rec-card {
+  flex: 1;
+  border-radius: 8px;
+  padding: 14px 18px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  transition: all 0.4s ease;
+}
+.rec-card.safest { border-left: 4px solid #2563eb; }
+.rec-card.avoid { border-left: 4px solid #dc2626; }
+.rec-card.shift { border-left: 4px solid #16a34a; }
+.rec-card .rec-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
+.rec-card .rec-route { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+.rec-card .rec-score { font-size: 13px; color: #555; margin-top: 2px; }
+.rec-card.safest .rec-label { color: #2563eb; }
+.rec-card.avoid .rec-label { color: #dc2626; }
+.rec-card.shift .rec-label { color: #16a34a; }
+
 /* ── Chart ── */
 .chart-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
 .chart-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
@@ -241,6 +265,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   .step { margin-bottom: 30px; }
   #map-svg { height: calc(50vh - 40px); }
   .explore-grid { grid-template-columns: 1fr; }
+  .route-rec { flex-direction: column; }
 }
 </style>
 </head>
@@ -345,6 +370,24 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   <h2>Explore the Routes</h2>
   <p class="explore-subtitle">Select routes, toggle day/night, and turn data layers on or off.</p>
 
+  <div class="route-rec" id="route-rec">
+    <div class="rec-card safest">
+      <div class="rec-label">Safest route</div>
+      <div class="rec-route" id="rec-safest-name"></div>
+      <div class="rec-score" id="rec-safest-score"></div>
+    </div>
+    <div class="rec-card avoid">
+      <div class="rec-label">Highest risk</div>
+      <div class="rec-route" id="rec-avoid-name"></div>
+      <div class="rec-score" id="rec-avoid-score"></div>
+    </div>
+    <div class="rec-card shift">
+      <div class="rec-label">Biggest day/night shift</div>
+      <div class="rec-route" id="rec-shift-name"></div>
+      <div class="rec-score" id="rec-shift-score"></div>
+    </div>
+  </div>
+
   <div class="explore-grid">
     <div class="explore-map" id="explore-map-container">
       <svg id="explore-map-svg"></svg>
@@ -434,6 +477,7 @@ async function init() {
   buildExploreToggles();
   drawComparisonChart();
   updateScorePanel();
+  updateRecommendation();
   setupScrollObserver();
   setupScrollTimeToggle();
   buildLegend();
@@ -776,6 +820,7 @@ function syncTimeToggles() {
   updateExploreMap();
   updateScorePanel();
   updateComparisonHighlight();
+  updateRecommendation();
 }
 
 function setupScrollTimeToggle() {
@@ -791,6 +836,7 @@ function setupScrollTimeToggle() {
     updateExploreMap();
     updateScorePanel();
     updateComparisonHighlight();
+    updateRecommendation();
   });
 }
 
@@ -963,6 +1009,7 @@ function buildExploreToggles() {
     updateExploreMap();
     updateScorePanel();
     updateComparisonHighlight();
+    updateRecommendation();
   });
 
   ['edges', 'lights', 'crime'].forEach(key => {
@@ -1005,6 +1052,40 @@ function updateScorePanel() {
       .style('width', (val * 100) + '%').style('background', cat.color);
     bar.append('div').attr('class', 'score-qual').text(getQualLabel(val));
   });
+}
+
+/* ═══ ROUTE RECOMMENDATION ═══ */
+
+function updateRecommendation() {
+  const routeNames = Object.keys(data.routes);
+  const timeKey = state.timeOfDay;
+  const ranked = routeNames.map(name => ({
+    name,
+    score: data.routes[name].scores[timeKey],
+    dayScore: data.routes[name].scores.day,
+    nightScore: data.routes[name].scores.night
+  })).sort((a, b) => b.score - a.score);
+
+  const safest = ranked[0];
+  const worst = ranked[ranked.length - 1];
+
+  const shifts = routeNames.map(name => {
+    const r = data.routes[name].scores;
+    return { name, delta: Math.round((r.night - r.day) * 100) };
+  }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const bigShift = shifts[0];
+
+  const timeLabel = state.timeOfDay === 'day' ? 'Safest route (daytime)' : 'Safest route (nighttime)';
+  const avoidLabel = state.timeOfDay === 'day' ? 'Highest risk (daytime)' : 'Highest risk (nighttime)';
+  document.querySelector('.rec-card.safest .rec-label').textContent = timeLabel;
+  document.querySelector('.rec-card.avoid .rec-label').textContent = avoidLabel;
+  document.getElementById('rec-safest-name').textContent = safest.name;
+  document.getElementById('rec-safest-score').textContent = Math.round(safest.score * 100) + '/100 (' + getQualLabel(safest.score) + ')';
+  document.getElementById('rec-avoid-name').textContent = worst.name;
+  document.getElementById('rec-avoid-score').textContent = Math.round(worst.score * 100) + '/100 (' + getQualLabel(worst.score) + ')';
+  document.getElementById('rec-shift-name').textContent = bigShift.name;
+  const sign = bigShift.delta > 0 ? '+' : '';
+  document.getElementById('rec-shift-score').textContent = sign + bigShift.delta + ' points at night' + (bigShift.delta > 0 ? ' (safer)' : ' (riskier)');
 }
 
 /* ═══ COMPARISON CHART ═══ */
