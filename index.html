@@ -302,7 +302,7 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .rec-card.shift .rec-label { color: #16a34a; }
 
 /* ── Chart ── */
-.chart-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+.chart-section { background: #F7F6F2; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
 .chart-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
 .chart-section .chart-subtitle { font-size: 12px; color: #666; margin-bottom: 14px; }
 #comparison-chart { width: 100%; height: 280px; }
@@ -1227,10 +1227,9 @@ function updateExploreMap() {
     .data(lightData, (d, i) => i)
     .join('circle')
     .attr('cx', d => exploreProjection(d)[0]).attr('cy', d => exploreProjection(d)[1])
-    .attr('r', 1.5 + blend * 1.5)
-    .attr('fill', d3.interpolateRgb('#f59e0b', '#fde68a')(blend))
-    .attr('opacity', 0.12 + blend * 0.38)
-    .attr('filter', blend > 0.5 ? 'url(#light-glow)' : null);
+    .attr('r', 2.5 + blend * 1.5)
+    .attr('fill', d3.interpolateRgb('#f59e0b', '#fbbf24')(blend))
+    .attr('opacity', 0.25 + blend * 0.45);
 
   // Crime: filtered by time, fade with blend
   const crimeFiltered = data.crime
@@ -1605,15 +1604,15 @@ function updateComparisonHighlight() {
       const lightW = x(Math.round(r.lighting * 25));
       const walkW = x(Math.round(r.walk * 25));
       let offset = 0;
-      [{ w: crimeW, c: '#DC2626', l: 'Crime' },
-       { w: lightW, c: '#F59E0B', l: 'Lighting' },
-       { w: walkW, c: '#3B82F6', l: 'Walkable' }].forEach(seg => {
+      [{ w: crimeW, c: '#D97706', l: 'Crime' },
+       { w: lightW, c: '#9CA3AF', l: 'Lighting' },
+       { w: walkW, c: '#E5E7EB', l: 'Walkable' }].forEach(seg => {
         g.append('rect').attr('x', offset).attr('y', yPos + barH + 3)
-          .attr('width', seg.w).attr('height', 6).attr('fill', seg.c).attr('rx', 2).attr('opacity', 0.7);
+          .attr('width', seg.w).attr('height', 6).attr('fill', seg.c).attr('rx', 2);
         offset += seg.w;
       });
-      g.append('text').attr('x', 0).attr('y', yPos + barH + 18)
-        .attr('font-size', '9px').attr('fill', '#6B7280')
+      g.append('text').attr('x', 0).attr('y', yPos + barH + 20)
+        .attr('font-size', '10px').attr('fill', '#6B7280')
         .text('Crime ' + Math.round(r.crime * 100) + '  |  Lighting ' + Math.round(r.lighting * 100) + '  |  Walkable ' + Math.round(r.walk * 100));
     }
   });
