@@ -711,7 +711,24 @@ function drawScrollMap(colorScale) {
     .attr('stroke', '#999')
     .attr('stroke-width', 2.5)
     .attr('stroke-opacity', 0.6)
-    .attr('class', 'edge-line');
+    .attr('class', 'edge-line')
+    .style('pointer-events', 'visibleStroke')
+    .on('mouseenter', function(event, d) {
+      if (state.currentScene < 5) return;
+      const scoreKey = (state.currentScene === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
+      const score = d[scoreKey];
+      const s = Math.round(score * 100);
+      const container = svg.node().parentElement;
+      const [mx, my] = d3.pointer(event, container);
+      d3.select('#tooltip').style('opacity', 1)
+        .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
+        .html(`<strong>${s}/100</strong> ${getQualLabel(score)}`);
+      d3.select(this).attr('stroke-width', 5);
+    })
+    .on('mouseleave', function() {
+      d3.select('#tooltip').style('opacity', 0);
+      d3.select(this).attr('stroke-width', null);
+    });
 
   // Streetlight layer
   svg.append('g').attr('id', 'scroll-lights').attr('clip-path', 'url(#scroll-land-clip)');
