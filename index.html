@@ -311,6 +311,12 @@ header .subtitle { font-size: 14px; color: #666; margin-top: 4px; }
 .rec-card.avoid .rec-label { color: #dc2626; }
 .rec-card.shift .rec-label { color: #16a34a; }
 
+/* ── Key findings ── */
+.findings-row { display: flex; gap: 20px; margin-bottom: 30px; }
+.finding-card { flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; }
+.finding-number { font-size: 36px; font-weight: 700; color: #D97706; line-height: 1; }
+.finding-label { font-size: 13px; color: #555; margin-top: 8px; line-height: 1.4; }
+
 /* ── Chart ── */
 .chart-section { background: #F7F6F2; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
 .chart-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
@@ -493,6 +499,21 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
         <h4>Safety Breakdown</h4>
         <div id="score-bars"></div>
       </div>
+    </div>
+  </div>
+
+  <div class="findings-row">
+    <div class="finding-card">
+      <div class="finding-number">18</div>
+      <div class="finding-label">point safety gap between the safest and least-safe route</div>
+    </div>
+    <div class="finding-card">
+      <div class="finding-number">3 of 5</div>
+      <div class="finding-label">routes are actually safer at night than during the day</div>
+    </div>
+    <div class="finding-card">
+      <div class="finding-number">100%</div>
+      <div class="finding-label">of the gap is driven by crime, not lighting or street design</div>
     </div>
   </div>
 
