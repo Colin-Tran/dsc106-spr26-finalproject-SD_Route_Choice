@@ -731,7 +731,7 @@ function drawScrollMap(colorScale) {
     .attr('y2', d => scrollProjection(d.to)[1])
     .attr('stroke', '#999')
     .attr('stroke-width', 2.5)
-    .attr('stroke-opacity', 0.6)
+    .attr('stroke-opacity', 0)
     .attr('class', 'edge-line')
     .style('pointer-events', 'visibleStroke')
     .on('mouseenter', function(event, d) {
@@ -861,10 +861,13 @@ function setScene(n) {
   d3.select('#map-label').text(labels[n] || '');
 
   // Edges — color arc: gray → blue → blue w/ gaps → RED/BLUE fracture
-  if (n === 1 || n === 2) {
+  if (n === 1) {
+    svg.selectAll('.edge-line')
+      .transition().delay((d, i) => i * 0.3).duration(500)
+      .attr('stroke', '#999').attr('stroke-opacity', 0.6);
+  } else if (n === 2) {
     svg.selectAll('.edge-line').transition(t)
-      .attr('stroke', '#999')
-      .attr('stroke-opacity', n === 2 ? 0.15 : 0.6);
+      .attr('stroke', '#999').attr('stroke-opacity', 0.15);
   } else if (n === 3) {
     svg.selectAll('.edge-line').transition(t)
       .attr('stroke', colorScale(0.85))
