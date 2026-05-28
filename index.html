@@ -133,10 +133,9 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .route-context .ctx-tip { color: #1e40af; font-size: 11px; line-height: 1.5; padding-top: 8px; border-top: 1px solid #e2e8f0; }
 
 .nav-compare-card { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-.nav-compare-row { display: flex; align-items: center; padding: 10px 12px; gap: 10px; }
+.nav-compare-row { display: flex; align-items: center; padding: 10px 12px; gap: 10px; transition: background 0.2s; }
 .nav-compare-row + .nav-compare-row { border-top: 1px solid #e2e8f0; }
-.nav-compare-row.original { background: #f7fafc; }
-.nav-compare-row.alt { background: #f0fdf4; }
+.nav-compare-row:hover { background: #f7fafc; }
 .nav-compare-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .nav-compare-tag.orig { background: #e2e8f0; color: #475569; }
 .nav-compare-tag.safer { background: #bbf7d0; color: #166534; }
@@ -1211,7 +1210,7 @@ function drawExploreMap(colorScale) {
   glow.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
   glow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
   const edgeGlow = defs.append('filter').attr('id', 'edge-glow').attr('x', '-10%').attr('y', '-10%').attr('width', '120%').attr('height', '120%');
-  edgeGlow.append('feGaussianBlur').attr('stdDeviation', '1.5').attr('result', 'blur');
+  edgeGlow.append('feGaussianBlur').attr('stdDeviation', '0.8').attr('result', 'blur');
   edgeGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
 
   const b = data.bounds;
