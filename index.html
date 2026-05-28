@@ -1412,6 +1412,29 @@ function updateExploreMap() {
   svg.selectAll('.explore-label')
     .attr('fill', labelFill).attr('stroke', labelStroke);
 
+  // Route score badges
+  const routeNames = Object.keys(data.routes);
+  content.selectAll('.route-badge').remove();
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    const mid = route.waypoints[Math.floor(route.waypoints.length / 2)];
+    const [bx, by] = exploreProjection(mid);
+    const score = Math.round(route.scores[state.timeOfDay] * 100);
+    const isSelected = i === state.selectedRoute;
+    if (!isSelected) return;
+    const g = content.append('g').attr('class', 'route-badge');
+    const txt = g.append('text').attr('x', bx).attr('y', by - 10)
+      .text(score + '/100').attr('font-size', '12px').attr('font-weight', '700')
+      .attr('fill', blend > 0.5 ? '#fff' : route.color)
+      .attr('text-anchor', 'middle').style('pointer-events', 'none');
+    const bbox = txt.node().getBBox();
+    g.insert('rect', 'text')
+      .attr('x', bbox.x - 5).attr('y', bbox.y - 3)
+      .attr('width', bbox.width + 10).attr('height', bbox.height + 6)
+      .attr('rx', 4).attr('fill', blend > 0.5 ? route.color : '#fff')
+      .attr('opacity', 0.9);
+  });
+
   // Dynamic insight annotations
   const content = svg.select('#explore-content');
   content.selectAll('.explore-insight').remove();
