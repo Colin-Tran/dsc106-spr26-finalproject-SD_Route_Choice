@@ -1810,7 +1810,9 @@ function updateComparisonHighlight() {
       .attr('fill', barColor).attr('rx', 4)
       .attr('class', 'chart-bar').attr('data-route', r.i)
       .style('cursor', 'pointer')
-      .on('click', () => selectRoute(r.i));
+      .on('click', () => selectRoute(r.i))
+      .on('mouseenter', function() { d3.select(this).attr('opacity', 1); })
+      .on('mouseleave', function() { d3.select(this).attr('opacity', null); });
 
     const dayScore = Math.round(data.routes[r.name].scores.day * 100);
     const nightScore = Math.round(data.routes[r.name].scores.night * 100);
