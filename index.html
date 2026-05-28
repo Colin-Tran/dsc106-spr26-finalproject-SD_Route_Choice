@@ -1721,9 +1721,19 @@ function updateComparisonHighlight() {
       .style('cursor', 'pointer')
       .on('click', () => selectRoute(r.i));
 
+    const dayScore = Math.round(data.routes[r.name].scores.day * 100);
+    const nightScore = Math.round(data.routes[r.name].scores.night * 100);
+    const delta = nightScore - dayScore;
+    const deltaStr = delta > 0 ? '+' + delta : delta < 0 ? '' + delta : '';
+    const deltaColor = delta > 0 ? '#059669' : delta < 0 ? '#DC2626' : '#9CA3AF';
     g.append('text').attr('x', x(score) + 6).attr('y', yPos + barH / 2 + 4)
       .attr('font-size', '13px').attr('fill', textColor).attr('font-weight', '600')
       .text(score);
+    if (deltaStr) {
+      g.append('text').attr('x', x(score) + 34).attr('y', yPos + barH / 2 + 4)
+        .attr('font-size', '10px').attr('fill', deltaColor)
+        .text(deltaStr + ' at night');
+    }
 
     if (isSelected) {
       const crimeW = x(Math.round(r.crime * 50));
