@@ -1414,7 +1414,7 @@ function updateExploreMap() {
   svg.selectAll('.explore-label')
     .attr('fill', labelFill).attr('stroke', labelStroke);
 
-  // Route score badges
+  // Route score badges on all routes
   const routeNames = Object.keys(data.routes);
   content.selectAll('.route-badge').remove();
   routeNames.forEach((name, i) => {
@@ -1423,18 +1423,18 @@ function updateExploreMap() {
     const [bx, by] = exploreProjection(mid);
     const score = Math.round(route.scores[state.timeOfDay] * 100);
     const isSelected = i === state.selectedRoute;
-    if (!isSelected) return;
-    const g = content.append('g').attr('class', 'route-badge');
+    const g = content.append('g').attr('class', 'route-badge')
+      .style('opacity', isSelected ? 1 : 0.5);
     const txt = g.append('text').attr('x', bx).attr('y', by - 10)
-      .text(score + '/100').attr('font-size', '12px').attr('font-weight', '700')
+      .text(score).attr('font-size', isSelected ? '13px' : '11px').attr('font-weight', '700')
       .attr('fill', blend > 0.5 ? '#fff' : route.color)
       .attr('text-anchor', 'middle').style('pointer-events', 'none');
     const bbox = txt.node().getBBox();
     g.insert('rect', 'text')
-      .attr('x', bbox.x - 5).attr('y', bbox.y - 3)
-      .attr('width', bbox.width + 10).attr('height', bbox.height + 6)
+      .attr('x', bbox.x - 4).attr('y', bbox.y - 2)
+      .attr('width', bbox.width + 8).attr('height', bbox.height + 4)
       .attr('rx', 4).attr('fill', blend > 0.5 ? route.color : '#fff')
-      .attr('opacity', 0.9);
+      .attr('opacity', 0.85);
   });
 
   // Dynamic insight annotations
