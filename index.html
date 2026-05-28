@@ -1233,10 +1233,24 @@ function drawExploreMap(colorScale) {
     .on('mouseenter', function(event, d) {
       const score = state.timeOfDay === 'day' ? d.score_day : d.score_night;
       const s = Math.round(score * 100);
+      const midLng = (d.from[0] + d.to[0]) / 2, midLat = (d.from[1] + d.to[1]) / 2;
+      const hoods = [
+        { name: 'Little Italy', lng: -117.172, lat: 32.725 },
+        { name: 'Gaslamp Quarter', lng: -117.162, lat: 32.711 },
+        { name: 'East Village', lng: -117.148, lat: 32.715 },
+        { name: 'Marina', lng: -117.172, lat: 32.709 },
+        { name: 'Cortez Hill', lng: -117.165, lat: 32.723 },
+        { name: 'Convention Ctr', lng: -117.158, lat: 32.704 },
+        { name: 'Hillcrest', lng: -117.165, lat: 32.748 },
+        { name: 'Balboa Park', lng: -117.146, lat: 32.732 }
+      ];
+      let nearest = hoods[0];
+      let minD = Infinity;
+      hoods.forEach(h => { const dd = (h.lng - midLng)**2 + (h.lat - midLat)**2; if (dd < minD) { minD = dd; nearest = h; } });
       const [mx, my] = d3.pointer(event, container);
       d3.select('#explore-tooltip').style('opacity', 1)
         .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
-        .html(`<strong>${s}/100</strong> ${getQualLabel(score)}<br><span style="font-size:10px;color:#aaa">${Math.round(d.length)}m segment</span>`);
+        .html(`<strong>${nearest.name}: ${s}/100</strong> ${getQualLabel(score)}<br><span style="font-size:10px;color:#aaa">${Math.round(d.length)}m segment</span>`);
       d3.select(this).attr('stroke-width', 5).attr('stroke-opacity', 1);
     })
     .on('mouseleave', function() {
