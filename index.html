@@ -1899,6 +1899,8 @@ document.addEventListener('keydown', (e) => {
   const slider = document.getElementById('time-slider');
   if (e.key === 'd' || e.key === 'D') { slider.value = 12; slider.dispatchEvent(new Event('input')); }
   if (e.key === 'n' || e.key === 'N') { slider.value = 21; slider.dispatchEvent(new Event('input')); }
+  if (e.key === 'ArrowLeft' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute - 1 + n) % n); }
+  if (e.key === 'ArrowRight' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute + 1) % n); }
 });
 </script>
 </body>
