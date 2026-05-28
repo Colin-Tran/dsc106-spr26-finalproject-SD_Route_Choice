@@ -774,11 +774,22 @@ function drawScrollMap(colorScale) {
       const scoreKey = (state.currentScene === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
       const score = d[scoreKey];
       const s = Math.round(score * 100);
+      const midLng = (d.from[0] + d.to[0]) / 2, midLat = (d.from[1] + d.to[1]) / 2;
+      const hoods = [
+        { name: 'Little Italy', lng: -117.172, lat: 32.725 },
+        { name: 'Gaslamp', lng: -117.162, lat: 32.711 },
+        { name: 'East Village', lng: -117.148, lat: 32.715 },
+        { name: 'Marina', lng: -117.172, lat: 32.709 },
+        { name: 'Cortez Hill', lng: -117.165, lat: 32.723 },
+        { name: 'Conv. Ctr', lng: -117.158, lat: 32.704 }
+      ];
+      let nearest = hoods[0], minD = Infinity;
+      hoods.forEach(h => { const dd = (h.lng - midLng)**2 + (h.lat - midLat)**2; if (dd < minD) { minD = dd; nearest = h; } });
       const container = svg.node().parentElement;
       const [mx, my] = d3.pointer(event, container);
       d3.select('#tooltip').style('opacity', 1)
         .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
-        .html(`<strong>${s}/100</strong> ${getQualLabel(score)}`);
+        .html(`<strong>${nearest.name}: ${s}/100</strong> ${getQualLabel(score)}`);
       d3.select(this).attr('stroke-width', 5);
     })
     .on('mouseleave', function() {
