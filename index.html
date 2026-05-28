@@ -755,6 +755,22 @@ function drawScrollMap(colorScale) {
       .on('mouseleave', () => d3.select('#tooltip').style('opacity', 0));
   });
 
+  // Route labels (appear scene 6+)
+  const routeLabelLayer = svg.append('g').attr('id', 'scroll-route-labels').style('opacity', 0);
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    const mid = route.waypoints[Math.floor(route.waypoints.length / 2)];
+    const [x, y] = scrollProjection(mid);
+    const score = Math.round(route.scores.day * 100);
+    const short = name.split(' to ')[0];
+    routeLabelLayer.append('text').attr('x', x).attr('y', y - 8)
+      .text(short + ': ' + score)
+      .attr('font-size', '11px').attr('font-weight', '600').attr('fill', route.color)
+      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
+      .attr('text-anchor', 'middle').attr('class', 'scroll-route-label').attr('data-index', i)
+      .style('pointer-events', 'none');
+  });
+
   // Annotation layer
   svg.append('g').attr('id', 'scroll-annotations');
 
@@ -863,6 +879,22 @@ function setScene(n) {
     .attr('stroke-width', n >= 6 ? (function() { return +d3.select(this).attr('data-index') === 0 ? 6 : 3.5; }) : 3.5);
   svg.selectAll('.scroll-route-halo').transition(t)
     .attr('stroke-width', n >= 6 ? (function() { return +d3.select(this).attr('data-index') === 0 ? 10 : 0; }) : 0);
+
+  // Route labels
+  svg.select('#scroll-route-labels').transition(t).style('opacity', n >= 6 ? 1 : 0);
+  if (n >= 6) {
+    const timeKey = (n === 7 && state.timeOfDay === 'night') ? 'night' : 'day';
+    svg.selectAll('.scroll-route-label').each(function() {
+      const el = d3.select(this);
+      const idx = +el.attr('data-index');
+      const rName = Object.keys(data.routes)[idx];
+      const score = Math.round(data.routes[rName].scores[timeKey] * 100);
+      const short = rName.split(' to ')[0];
+      el.text(short + ': ' + score);
+      el.attr('fill', isNight ? '#e2e8f0' : data.routes[rName].color);
+      el.attr('stroke', isNight ? '#1a202c' : '#fff');
+    });
+  }
 
   // Annotations
   updateScrollAnnotations(n);
