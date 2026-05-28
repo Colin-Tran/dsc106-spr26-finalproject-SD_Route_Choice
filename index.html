@@ -700,8 +700,15 @@ function drawScrollMap(colorScale) {
     .attr('points', scrollWater.map(p => p.join(',')).join(' '))
     .attr('fill', '#bfdbfe').attr('id', 'scroll-water');
 
+  // Clip to land only
+  const scrollCoast = COASTLINE.slice(0, 11).map(c => scrollProjection(c));
+  const scrollLand = [[0,0],[width,0],[width,height], ...scrollCoast.reverse(), [0,height]];
+  const scrollDefs = svg.append('defs');
+  scrollDefs.append('clipPath').attr('id', 'scroll-land-clip')
+    .append('polygon').attr('points', scrollLand.map(p => p.join(',')).join(' '));
+
   // Edge layer
-  svg.append('g').attr('id', 'scroll-edges')
+  svg.append('g').attr('id', 'scroll-edges').attr('clip-path', 'url(#scroll-land-clip)')
     .selectAll('line').data(data.edges).join('line')
     .attr('x1', d => scrollProjection(d.from)[0])
     .attr('y1', d => scrollProjection(d.from)[1])
@@ -713,10 +720,10 @@ function drawScrollMap(colorScale) {
     .attr('class', 'edge-line');
 
   // Streetlight layer
-  svg.append('g').attr('id', 'scroll-lights');
+  svg.append('g').attr('id', 'scroll-lights').attr('clip-path', 'url(#scroll-land-clip)');
 
   // Crime layer
-  svg.append('g').attr('id', 'scroll-crime');
+  svg.append('g').attr('id', 'scroll-crime').attr('clip-path', 'url(#scroll-land-clip)');
 
   // Route layer
   const routeLayer = svg.append('g').attr('id', 'scroll-routes');
@@ -1085,7 +1092,13 @@ function drawExploreMap(colorScale) {
     .attr('points', waterPath.map(p => p.join(',')).join(' '))
     .attr('fill', '#bfdbfe').attr('id', 'explore-water');
 
-  svg.append('g').attr('id', 'explore-edges')
+  // Clip to land only
+  const expCoast = COASTLINE.slice(0, 11).map(c => exploreProjection(c));
+  const expLand = [[0,0],[width,0],[width,height], ...expCoast.reverse(), [0,height]];
+  defs.append('clipPath').attr('id', 'explore-land-clip')
+    .append('polygon').attr('points', expLand.map(p => p.join(',')).join(' '));
+
+  svg.append('g').attr('id', 'explore-edges').attr('clip-path', 'url(#explore-land-clip)')
     .selectAll('line').data(data.edges).join('line')
     .attr('x1', d => exploreProjection(d.from)[0])
     .attr('y1', d => exploreProjection(d.from)[1])
@@ -1095,8 +1108,8 @@ function drawExploreMap(colorScale) {
     .attr('stroke-width', 2.5).attr('stroke-opacity', 0.65)
     .attr('class', 'edge-line explore-edge');
 
-  svg.append('g').attr('id', 'explore-lights');
-  svg.append('g').attr('id', 'explore-crime');
+  svg.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
+  svg.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
 
   const routeLayer = svg.append('g').attr('id', 'explore-routes');
   const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
