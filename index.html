@@ -481,8 +481,8 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   </div>
 
   <div class="chart-section">
-    <h2>Crime scores vary widely across routes; walkable streets and lighting do not</h2>
-    <p class="chart-subtitle">Composite safety scores by category | Source: SDPD NIBRS 2020-2026, EPA SLD v3.0, City of SD streetlight inventory</p>
+    <h2>Crime drives the entire safety gap between routes</h2>
+    <p class="chart-subtitle">Overall safety score with component breakdown | Source: SDPD NIBRS, EPA SLD, City of SD</p>
     <svg id="comparison-chart"></svg>
   </div>
 
@@ -1542,72 +1542,86 @@ function updateRecommendation() {
 
 function drawComparisonChart() {
   const svg = d3.select('#comparison-chart');
-  const margin = { top: 20, right: 20, bottom: 70, left: 45 };
+  const margin = { top: 10, right: 60, bottom: 10, left: 180 };
   const width = (svg.node().getBoundingClientRect().width || 800) - margin.left - margin.right;
-  const height = 280 - margin.top - margin.bottom;
+  const height = 300 - margin.top - margin.bottom;
   svg.attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`).attr('id', 'chart-g');
-  const routeNames = Object.keys(data.routes);
-  const categories = ['crime_day', 'crime_night', 'lighting', 'traffic'];
-  const catLabels = { crime_day: 'Crime (Day)', crime_night: 'Crime (Night)', lighting: 'Lighting & Roads', traffic: 'Walkable Streets' };
-
-  const x0 = d3.scaleBand().domain(categories).range([0, width]).padding(0.2);
-  const x1 = d3.scaleBand().domain(routeNames).range([0, x0.bandwidth()]).padding(0.05);
-  const y = d3.scaleLinear().domain([0, 1]).range([height, 0]);
-
-  // Gridlines
-  g.append('g').attr('class','grid').selectAll('line')
-    .data(y.ticks(5)).join('line')
-    .attr('x1', 0).attr('x2', width).attr('y1', d => y(d)).attr('y2', d => y(d))
-    .attr('stroke', '#e5e7eb').attr('stroke-dasharray', '2,3');
-
-  g.append('g').attr('transform', `translate(0,${height})`)
-    .call(d3.axisBottom(x0).tickFormat(d => catLabels[d]))
-    .selectAll('text').attr('font-size', '11px');
-  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d => Math.round(d * 100)))
-    .selectAll('text').attr('font-size', '11px');
-  g.append('text').attr('x', -margin.left + 5).attr('y', -8).attr('font-size', '11px').attr('fill', '#666').text('Score');
-
-  categories.forEach(cat => {
-    const catGroup = g.append('g').attr('transform', `translate(${x0(cat)},0)`);
-    routeNames.forEach((name, i) => {
-      const route = data.routes[name];
-      catGroup.append('rect')
-        .attr('x', x1(name)).attr('y', y(route.scores[cat]))
-        .attr('width', x1.bandwidth()).attr('height', height - y(route.scores[cat]))
-        .attr('fill', route.color).attr('opacity', i === 0 ? 0.9 : 0.45)
-        .attr('rx', 2).attr('class', 'chart-bar').attr('data-route', i).attr('data-cat', cat);
-    });
-  });
-
-  const crimeScores = routeNames.map(n => data.routes[n].scores.crime_day);
-  const spread = Math.round((Math.max(...crimeScores) - Math.min(...crimeScores)) * 100);
-  g.append('text')
-    .attr('x', x0('crime_day') + x0.bandwidth() / 2)
-    .attr('y', y(Math.max(...crimeScores)) - 12)
-    .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#e53e3e').attr('font-weight', '500')
-    .text(`${spread}-pt spread across routes`);
-
-  const chartLegend = g.append('g').attr('transform', `translate(0, ${height + 35})`);
-  routeNames.forEach((name, i) => {
-    const short = name.includes(' to ') ? name.split(' to ')[0] + ' → ' + name.split(' to ')[1].split(' ')[0] : name;
-    const lg = chartLegend.append('g').attr('transform', `translate(${i * (width / 5)}, 0)`);
-    lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', data.routes[name].color).attr('opacity', i === 0 ? 0.9 : 0.3);
-    lg.append('text').attr('x', 13).attr('y', 9).attr('font-size', '10px').attr('fill', '#555').text(short);
-  });
+  svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`).attr('id', 'chart-g');
+  updateComparisonHighlight();
 }
 
 function updateComparisonHighlight() {
-  const activeCrime = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
-  const inactiveCrime = state.timeOfDay === 'day' ? 'crime_night' : 'crime_day';
-  d3.selectAll('.chart-bar').attr('opacity', function() {
-    const bar = d3.select(this);
-    const isSelected = +bar.attr('data-route') === state.selectedRoute;
-    const cat = bar.attr('data-cat');
-    if (cat === inactiveCrime) return isSelected ? 0.3 : 0.12;
-    return isSelected ? 0.9 : 0.45;
+  const svg = d3.select('#comparison-chart');
+  const g = svg.select('#chart-g');
+  g.selectAll('*').remove();
+
+  const routeNames = Object.keys(data.routes);
+  const timeKey = state.timeOfDay;
+  const crimeKey = timeKey === 'day' ? 'crime_day' : 'crime_night';
+
+  const ranked = routeNames.map((name, i) => ({
+    name, i,
+    overall: data.routes[name].scores[timeKey],
+    crime: data.routes[name].scores[crimeKey],
+    lighting: data.routes[name].scores.lighting,
+    walk: data.routes[name].scores.traffic
+  })).sort((a, b) => b.overall - a.overall);
+
+  const margin = { left: 180, right: 60 };
+  const totalW = (svg.node().getBoundingClientRect().width || 800);
+  const barW = totalW - margin.left - margin.right;
+  const barH = 28;
+  const gap = 14;
+
+  const x = d3.scaleLinear().domain([0, 100]).range([0, barW]);
+  const grayDefault = '#E5E7EB';
+  const highlight = '#D97706';
+
+  ranked.forEach((r, idx) => {
+    const yPos = idx * (barH + gap);
+    const isSelected = r.i === state.selectedRoute;
+    const barColor = isSelected ? highlight : grayDefault;
+    const textColor = isSelected ? '#1F2937' : '#6B7280';
+    const score = Math.round(r.overall * 100);
+
+    const short = r.name.includes(' to ') ? r.name.split(' to ')[0] + ' → ' + r.name.split(' to ')[1].split(' ')[0] : r.name;
+    g.append('text').attr('x', -8).attr('y', yPos + barH / 2 + 4)
+      .attr('text-anchor', 'end').attr('font-size', '12px').attr('fill', textColor)
+      .attr('font-weight', isSelected ? '600' : '400').text(short);
+
+    g.append('rect').attr('x', 0).attr('y', yPos)
+      .attr('width', x(score)).attr('height', barH)
+      .attr('fill', barColor).attr('rx', 4)
+      .attr('class', 'chart-bar').attr('data-route', r.i)
+      .style('cursor', 'pointer')
+      .on('click', () => selectRoute(r.i));
+
+    g.append('text').attr('x', x(score) + 6).attr('y', yPos + barH / 2 + 4)
+      .attr('font-size', '13px').attr('fill', textColor).attr('font-weight', '600')
+      .text(score);
+
+    if (isSelected) {
+      const crimeW = x(Math.round(r.crime * 50));
+      const lightW = x(Math.round(r.lighting * 25));
+      const walkW = x(Math.round(r.walk * 25));
+      let offset = 0;
+      [{ w: crimeW, c: '#DC2626', l: 'Crime' },
+       { w: lightW, c: '#F59E0B', l: 'Lighting' },
+       { w: walkW, c: '#3B82F6', l: 'Walkable' }].forEach(seg => {
+        g.append('rect').attr('x', offset).attr('y', yPos + barH + 3)
+          .attr('width', seg.w).attr('height', 6).attr('fill', seg.c).attr('rx', 2).attr('opacity', 0.7);
+        offset += seg.w;
+      });
+      g.append('text').attr('x', 0).attr('y', yPos + barH + 18)
+        .attr('font-size', '9px').attr('fill', '#6B7280')
+        .text('Crime ' + Math.round(r.crime * 100) + '  |  Lighting ' + Math.round(r.lighting * 100) + '  |  Walkable ' + Math.round(r.walk * 100));
+    }
   });
+
+  g.selectAll('.x-grid').data(x.ticks(5)).join('line').attr('class', 'x-grid')
+    .attr('x1', d => x(d)).attr('x2', d => x(d))
+    .attr('y1', 0).attr('y2', ranked.length * (barH + gap) - gap)
+    .attr('stroke', '#F3F4F6').attr('stroke-width', 1).lower();
 }
 
 init();
