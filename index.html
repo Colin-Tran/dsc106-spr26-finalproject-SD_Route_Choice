@@ -1605,6 +1605,17 @@ function updateScorePanel() {
 
 /* ═══ ROUTE RECOMMENDATION ═══ */
 
+function estimateWalkMin(route) {
+  const wps = route.waypoints;
+  let d = 0;
+  for (let i = 1; i < wps.length; i++) {
+    const dx = (wps[i][0] - wps[i-1][0]) * 111320 * Math.cos(wps[i][1] * Math.PI / 180);
+    const dy = (wps[i][1] - wps[i-1][1]) * 110540;
+    d += Math.sqrt(dx * dx + dy * dy);
+  }
+  return Math.round(d / 83);
+}
+
 function updateRecommendation() {
   const routeNames = Object.keys(data.routes);
   const timeKey = state.timeOfDay;
@@ -1612,7 +1623,8 @@ function updateRecommendation() {
     name,
     score: data.routes[name].scores[timeKey],
     dayScore: data.routes[name].scores.day,
-    nightScore: data.routes[name].scores.night
+    nightScore: data.routes[name].scores.night,
+    walkMin: estimateWalkMin(data.routes[name])
   })).sort((a, b) => b.score - a.score);
 
   const safest = ranked[0];
@@ -1629,9 +1641,9 @@ function updateRecommendation() {
   document.querySelector('.rec-card.safest .rec-label').textContent = timeLabel;
   document.querySelector('.rec-card.avoid .rec-label').textContent = avoidLabel;
   document.getElementById('rec-safest-name').textContent = safest.name;
-  document.getElementById('rec-safest-score').textContent = Math.round(safest.score * 100) + '/100 (' + getQualLabel(safest.score) + ')';
+  document.getElementById('rec-safest-score').textContent = Math.round(safest.score * 100) + '/100 · ~' + safest.walkMin + ' min';
   document.getElementById('rec-avoid-name').textContent = worst.name;
-  document.getElementById('rec-avoid-score').textContent = Math.round(worst.score * 100) + '/100 (' + getQualLabel(worst.score) + ')';
+  document.getElementById('rec-avoid-score').textContent = Math.round(worst.score * 100) + '/100 · ~' + worst.walkMin + ' min';
   document.getElementById('rec-shift-name').textContent = bigShift.name;
   const sign = bigShift.delta > 0 ? '+' : '';
   document.getElementById('rec-shift-score').textContent = sign + bigShift.delta + ' points at night' + (bigShift.delta > 0 ? ' (safer)' : ' (riskier)');
