@@ -336,7 +336,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       <div class="formula-row">
         <div class="formula-box"><div class="label">Crime Density</div><div class="weight">50% day / 45% night</div></div>
         <span class="formula-plus">+</span>
-        <div class="formula-box"><div class="label">Street Design</div><div class="weight">25%</div></div>
+        <div class="formula-box"><div class="label">Walkable Streets</div><div class="weight">25%</div></div>
         <span class="formula-plus">+</span>
         <div class="formula-box"><div class="label">Lighting &amp; Roads</div><div class="weight">25% day / 30% night</div></div>
       </div>
@@ -359,10 +359,10 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     </div>
 
     <div class="step" data-scene="3">
-      <h3>Layer 1: Street Design</h3>
-      <p>Can you cross the street easily? Are there shops along the way, or just parking lots? Is there a bus stop nearby? That is what this layer captures: how well the streets are designed for people on foot.</p>
-      <p>Downtown San Diego scores high everywhere. The grid layout, mixed-use buildings, and transit access make every block above average. Notice the map is almost entirely blue. If street design were the whole story, every route would be equally safe.</p>
-      <p class="scene-note">Based on the EPA National Walkability Index: intersection density, land use diversity, transit proximity.</p>
+      <h3>Layer 1: Walkable Streets</h3>
+      <p>Think about the last street you enjoyed walking on. Short blocks so you can cross easily. Coffee shops, restaurants, and storefronts at eye level instead of blank walls and parking lots. A bus stop within a few minutes.</p>
+      <p>Downtown San Diego has all of that nearly everywhere. The map is almost entirely blue because every block here is above average for walking comfort. If this were the only thing that mattered, every route would be equally safe.</p>
+      <p class="scene-note">Source: EPA National Walkability Index, which scores each area on how easy it is to walk based on block size, nearby shops, and transit access.</p>
     </div>
 
     <div class="step" data-scene="4">
@@ -382,7 +382,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <div class="step" data-scene="6">
       <h3>Five Routes Compared</h3>
       <p>These are not random lines on a map. They connect the places people actually walk between: the trolley station and the ballpark, Gaslamp restaurants and the Convention Center, Little Italy and the waterfront.</p>
-      <p>During the day, Little Italy to Seaport Village is the safest corridor (73/100). Gaslamp to Convention Center scores lowest (55/100). That 18-point gap exists even though street design and lighting are nearly identical across all five routes.</p>
+      <p>During the day, Little Italy to Seaport Village is the safest corridor (73/100). Gaslamp to Convention Center scores lowest (55/100). That 18-point gap exists even though walkable streets and lighting are nearly identical across all five routes.</p>
       <p class="scene-note">Hover over a route to see its score. Click routes in the explore section below for full breakdown.</p>
     </div>
 
@@ -485,7 +485,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   </div>
 
   <div class="chart-section">
-    <h2>Crime scores vary widely across routes; street design and lighting do not</h2>
+    <h2>Crime scores vary widely across routes; walkable streets and lighting do not</h2>
     <p class="chart-subtitle">Composite safety scores by category | Source: SDPD NIBRS 2020-2026, EPA SLD v3.0, City of SD streetlight inventory</p>
     <svg id="comparison-chart"></svg>
   </div>
@@ -496,11 +496,11 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <h3>1. What have you done so far?</h3>
     <p>We collected and cleaned four public datasets for this project: crime incidents from data.sandiego.gov (NIBRS 2020-2026, about 46,000 records), streetlight locations from the City of San Diego inventory (55,506 lights), the road network from OpenStreetMap using OSMnx, and walkability scores from the EPA Smart Location Database. We used these to build a walking graph of downtown San Diego with around 252,000 nodes and 684,000 edges, where each edge has a safety score for both day and night.</p>
     <p>The safety score for each street segment is a weighted average of three things: how much crime is nearby, how walkable the neighborhood is according to the EPA index, and how good the infrastructure is (streetlights within 30 meters plus road type). Crime gets scored differently for day vs. night since incident patterns change after dark. We computed these scores using kernel density estimation at multiple distance thresholds.</p>
-    <p>We picked five walking routes through downtown and ran shortest-path routing on the scored graph to get real paths. The scrollytelling visualization above introduces each scoring layer one at a time (street design, lighting, crime) before showing the full composite scores and route comparisons.</p>
+    <p>We picked five walking routes through downtown and ran shortest-path routing on the scored graph to get real paths. The scrollytelling visualization above introduces each scoring layer one at a time (walkable streets, lighting, crime) before showing the full composite scores and route comparisons.</p>
     <p>The main interactions are: scrolling through the narrative to see layers build up, clicking a route to highlight it and see its score breakdown, toggling between day and night to see how scores change, and turning on streetlight or crime layers to see the raw data behind the scores. The bar chart compares all five routes across the four scoring categories.</p>
 
     <h3>2. What will be the most challenging part of your project to design, and why?</h3>
-    <p>The hardest part will be showing the safety score in a way that does not overwhelm the reader. Each route has three inputs (crime, street design, lighting) and crime changes between day and night. If we show everything at once the map gets cluttered and the main takeaway gets lost: that the safest and fastest routes are not the same, and the gap changes depending on time of day.</p>
+    <p>The hardest part will be showing the safety score in a way that does not overwhelm the reader. Each route has three inputs (crime, walkable streets, lighting) and crime changes between day and night. If we show everything at once the map gets cluttered and the main takeaway gets lost: that the safest and fastest routes are not the same, and the gap changes depending on time of day.</p>
     <p>We want to use scrollytelling to introduce one data layer at a time so the reader builds up understanding step by step. But this creates a problem: if someone clicks a route or toggles day/night before the scroll has explained what those layers mean, they will be confused. Figuring out how to let people explore freely while still guiding them through the story is something we have not fully solved yet.</p>
     <p>Another challenge is making the day/night difference feel clear and accurate. Some areas like East Village near 12th and Imperial get much more dangerous at night, while Gaslamp Quarter actually stays about the same because of its foot traffic and nightlife. We need to pick colors and annotations carefully so people do not misread the scale or miss these shifts.</p>
     <p>Performance is also a concern. We are rendering over 5,500 street edges with individual colors in SVG, which can lag on slower laptops. We might need to switch the background network to Canvas rendering and keep SVG only for the route overlays, but that would make the code more complex.</p>
@@ -742,7 +742,7 @@ function setScene(n) {
   // Map subtitle
   const labels = [
     '', 'Downtown San Diego', 'Safety Score Methodology',
-    'Street Design (EPA Walkability Index)', 'Lighting & Roads',
+    'Walkable Streets', 'Lighting & Roads',
     'Composite Safety Score (Crime Dominant)', 'Route Comparison (Day)',
     n === 7 && state.timeOfDay === 'night' ? 'Route Comparison (Night)' : 'Route Comparison (Day vs. Night)',
     'Full Exploration Mode'
@@ -1349,7 +1349,7 @@ function updateScorePanel() {
   const categories = [
     { key: timeKey, label: 'Crime Safety', color: '#ef4444' },
     { key: 'lighting', label: 'Lighting & Roads', color: '#f59e0b' },
-    { key: 'traffic', label: 'Street Design', color: '#3b82f6' },
+    { key: 'traffic', label: 'Walkable Streets', color: '#3b82f6' },
     { key: state.timeOfDay, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
   ];
   const container = d3.select('#score-bars');
@@ -1413,7 +1413,7 @@ function drawComparisonChart() {
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`).attr('id', 'chart-g');
   const routeNames = Object.keys(data.routes);
   const categories = ['crime_day', 'crime_night', 'lighting', 'traffic'];
-  const catLabels = { crime_day: 'Crime (Day)', crime_night: 'Crime (Night)', lighting: 'Lighting & Roads', traffic: 'Street Design' };
+  const catLabels = { crime_day: 'Crime (Day)', crime_night: 'Crime (Night)', lighting: 'Lighting & Roads', traffic: 'Walkable Streets' };
 
   const x0 = d3.scaleBand().domain(categories).range([0, width]).padding(0.2);
   const x1 = d3.scaleBand().domain(routeNames).range([0, x0.bandwidth()]).padding(0.05);
