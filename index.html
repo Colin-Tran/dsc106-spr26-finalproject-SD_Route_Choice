@@ -446,7 +446,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
         <div class="route-context" id="route-context"></div>
       </div>
       <div id="navigate-panel" class="nav-panel" style="display:none;">
-        <p class="nav-instruction">Is there a safer way to walk the same trip? This computes the safest alternative path between the same start and end points.</p>
+        <p class="nav-instruction">Three routing profiles for the same trip: Fastest (shortest distance), Balanced, and Extra Caution (safest). See where they diverge on the map.</p>
         <h3 style="margin-bottom:8px;">Select a trip</h3>
         <ul class="route-list" id="nav-route-list"></ul>
         <div id="nav-comparison"></div>
@@ -595,7 +595,9 @@ function findNearestNode(lngLat) {
   return best;
 }
 
-function dijkstraSafest(startIdx, endIdx) {
+// SafePath cost: edge_length * (1 + multiplier * (1 - score))
+// multiplier=0 → fastest, multiplier=0.5 → balanced, multiplier=1.0 → extra caution
+function dijkstraRoute(startIdx, endIdx, multiplier) {
   const n = graph.nodes.length;
   const dist = new Float64Array(n).fill(Infinity);
   const prev = new Int32Array(n).fill(-1);
@@ -612,7 +614,8 @@ function dijkstraSafest(startIdx, endIdx) {
     if (u === endIdx) break;
     for (const edge of graph.adj[u]) {
       if (visited[edge.to]) continue;
-      const w = edge.length / Math.max(edge[scoreKey], 0.1);
+      const score = edge[scoreKey];
+      const w = edge.length * (1 + multiplier * (1 - score));
       const nd = dist[u] + w;
       if (nd < dist[edge.to]) {
         dist[edge.to] = nd;
@@ -1414,68 +1417,70 @@ function updateNavAlternative() {
   const startIdx = findNearestNode(startCoords);
   const endIdx = findNearestNode(endCoords);
 
-  const alt = dijkstraSafest(startIdx, endIdx);
-  const origScore = Math.round(route.scores[state.timeOfDay] * 100);
-  const origDist = Math.round(route.waypoints.reduce((sum, pt, i) => {
-    if (i === 0) return 0;
-    const prev = route.waypoints[i - 1];
-    const dx = (pt[0] - prev[0]) * 111320 * Math.cos(pt[1] * Math.PI / 180);
-    const dy = (pt[1] - prev[1]) * 110540;
-    return sum + Math.sqrt(dx * dx + dy * dy);
-  }, 0));
-  const origMin = Math.round(origDist / 83);
+  // Three SafePath routing profiles
+  const profiles = [
+    { name: 'Fastest', multiplier: 0, color: '#9CA3AF', dash: '6,4', width: 3 },
+    { name: 'Balanced', multiplier: 0.5, color: '#D97706', dash: '', width: 4 },
+    { name: 'Extra Caution', multiplier: 1.0, color: '#059669', dash: '', width: 4 }
+  ];
+
+  const results = profiles.map(p => {
+    const r = dijkstraRoute(startIdx, endIdx, p.multiplier);
+    if (!r) return null;
+    const walkMin = Math.round(r.totalLen / 83);
+    return { ...p, path: r.path, score: Math.round(r.avgScore * 100), dist: Math.round(r.totalLen), min: walkMin, qualLabel: getQualLabel(r.avgScore) };
+  }).filter(Boolean);
 
   const container = document.getElementById('nav-comparison');
-  if (!alt) {
-    container.innerHTML = '<div style="padding:8px;font-size:12px;color:#888;">No alternative found.</div>';
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding:8px;font-size:12px;color:#888;">No routes found.</div>';
     return;
   }
 
-  const altScore = Math.round(alt.avgScore * 100);
-  const altDist = Math.round(alt.totalLen);
-  const altMin = Math.round(altDist / 83);
-  const scoreDelta = altScore - origScore;
-  const timeDelta = altMin - origMin;
+  // Draw routes on map
+  const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
+  const routeLayer = svg.select('#explore-routes');
+  results.forEach(r => {
+    if (r.path.length < 2) return;
+    routeLayer.append('path').datum(r.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', r.width + 4)
+      .attr('stroke-linecap', 'round').attr('class', 'nav-route').style('opacity', 0.6);
+    routeLayer.append('path').datum(r.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', r.color).attr('stroke-width', r.width)
+      .attr('stroke-linecap', 'round').attr('class', 'nav-route')
+      .attr('stroke-dasharray', r.dash || null);
+  });
 
-  if (alt.path.length > 1) {
-    const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
-    const routeLayer = svg.select('#explore-routes');
-    routeLayer.append('path').datum(alt.path).attr('d', line)
-      .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 9)
-      .attr('stroke-linecap', 'round').attr('class', 'nav-route').style('opacity', 0.8);
-    routeLayer.append('path').datum(alt.path).attr('d', line)
-      .attr('fill', 'none').attr('stroke', '#16a34a').attr('stroke-width', 4)
-      .attr('stroke-linecap', 'round').attr('stroke-dasharray', '8,5')
-      .attr('class', 'nav-route');
+  // Endpoint markers
+  const startPt = exploreProjection(results[0].path[0]);
+  const endPt = exploreProjection(results[0].path[results[0].path.length - 1]);
+  [{ pt: startPt, c: '#059669' }, { pt: endPt, c: '#dc2626' }].forEach(({ pt, c }) => {
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 7).attr('fill', c).attr('class', 'nav-marker');
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3).attr('fill', '#fff').attr('class', 'nav-marker');
+  });
 
-    const startPt = exploreProjection(alt.path[0]);
-    const endPt = exploreProjection(alt.path[alt.path.length - 1]);
-    [{ pt: startPt, c: '#16a34a' }, { pt: endPt, c: '#dc2626' }].forEach(({ pt, c }) => {
-      routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 7).attr('fill', c).attr('class', 'nav-marker');
-      routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3).attr('fill', '#fff').attr('class', 'nav-marker');
-    });
-  }
+  // Comparison card
+  const fastest = results.find(r => r.name === 'Fastest');
+  const safest = results.find(r => r.name === 'Extra Caution');
+  const tradeoff = safest && fastest
+    ? `+${safest.score - fastest.score} safety points for +${safest.min - fastest.min} min`
+    : '';
 
-  const sign = scoreDelta > 0 ? '+' : '';
-  const timeSign = timeDelta > 0 ? '+' : '';
-  const hasBenefit = scoreDelta > 2;
   container.innerHTML =
     `<div class="nav-compare-card">
-      <div class="nav-compare-row original">
-        <span class="nav-compare-tag orig">Direct</span>
-        <span class="nav-compare-score">${origScore}</span>
-        <span class="nav-compare-detail">${getQualLabel(route.scores[state.timeOfDay])} · ~${origMin} min</span>
-      </div>
-      <div class="nav-compare-row alt">
-        <span class="nav-compare-tag safer">Safest</span>
-        <span class="nav-compare-score">${altScore}</span>
-        <span class="nav-compare-detail">${getQualLabel(alt.avgScore)} · ~${altMin} min</span>
-      </div>
-      ${hasBenefit
-        ? `<div class="nav-compare-delta">${sign}${scoreDelta} safety points for ${timeSign}${timeDelta} min</div>`
-        : `<div class="nav-compare-delta" style="color:#475569;background:#f7fafc;border-color:#e2e8f0;">This is already close to the safest path</div>`
-      }
-    </div>`;
+      ${results.map(r => `
+        <div class="nav-compare-row" style="border-left: 3px solid ${r.color};">
+          <span class="nav-compare-tag" style="background:${r.color}20;color:${r.color};">${r.name}</span>
+          <span class="nav-compare-score">${r.score}</span>
+          <span class="nav-compare-detail">${r.qualLabel} · ${r.dist}m · ~${r.min} min</span>
+        </div>
+      `).join('')}
+      ${tradeoff ? `<div class="nav-compare-delta">${tradeoff}</div>` : ''}
+    </div>
+    <p style="font-size:10px;color:#9CA3AF;margin-top:8px;">
+      Cost = length × (1 + multiplier × (1 − score))<br>
+      Fastest: m=0 · Balanced: m=0.5 · Extra Caution: m=1.0
+    </p>`;
 }
 
 function updateScorePanel() {
