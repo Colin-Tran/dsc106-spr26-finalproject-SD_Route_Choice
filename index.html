@@ -838,6 +838,14 @@ function setScene(n) {
         return colorScale(Math.min(v, 0.92));
       })
       .attr('stroke-opacity', 0.7);
+  } else if (n === 5 && state.currentScene !== 5) {
+    // Crime reveal: brief flash then fracture
+    svg.selectAll('.edge-line')
+      .transition().duration(200).attr('stroke-opacity', 0.3)
+      .transition().duration(800)
+      .attr('stroke', d => colorScale(d.score_day))
+      .attr('stroke-opacity', 0.85)
+      .attr('stroke-width', 3);
   } else {
     const timeKey = (n === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
     svg.selectAll('.edge-line').transition(t)
