@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exploring Pedestrian Safety and Walkability in Downtown San Diego</title>
+<title>SafePath: Is Your Walking Route the Safest One?</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1750,6 +1750,13 @@ function updateComparisonHighlight() {
 }
 
 init();
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const slider = document.getElementById('time-slider');
+  if (e.key === 'd' || e.key === 'D') { slider.value = 12; slider.dispatchEvent(new Event('input')); }
+  if (e.key === 'n' || e.key === 'N') { slider.value = 21; slider.dispatchEvent(new Event('input')); }
+});
 </script>
 </body>
 </html>
