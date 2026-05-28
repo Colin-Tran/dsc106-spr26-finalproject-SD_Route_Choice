@@ -276,9 +276,8 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   <div class="steps-container">
     <div class="step" data-scene="1">
       <h3>The Question</h3>
-      <p>Over 60,000 people live in downtown San Diego. Many of them walk to work, to dinner, to the waterfront.</p>
-      <p>But which routes are safest?</p>
-      <p>We scored every street segment using three public datasets and mapped five walking routes through downtown. Scroll to see how the safety picture builds up, one layer at a time.</p>
+      <p>You leave Petco Park after a night game. Do you cut through East Village or loop around through the Gaslamp? It feels like a gut call, but the data says one choice is 18 points safer than the other.</p>
+      <p>We scored every street segment in downtown San Diego using three public datasets and mapped five walking routes. Scroll to see how the safety picture builds up, one layer at a time.</p>
     </div>
 
     <div class="step" data-scene="2">
@@ -290,7 +289,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <div class="step" data-scene="3">
       <h3>Layer 1: Walkability</h3>
       <p>Downtown San Diego is one of the most walkable areas in the county. The EPA's National Walkability Index rates nearly every block group here as above average.</p>
-      <p>The map is almost entirely blue. If walkability were the whole story, every route would be equally safe.</p>
+      <p>Notice how the map is almost entirely blue. If walkability were the whole story, every route would be equally safe. But it is not the whole story.</p>
       <p class="scene-note">Walkability measures neighborhood design: intersection density, land use diversity, transit access.</p>
     </div>
 
@@ -303,8 +302,8 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 
     <div class="step" data-scene="5">
       <h3>Layer 3: Crime Density</h3>
-      <p>Crime density changes everything. Reported incidents cluster heavily in East Village and along the Convention Center corridor. Little Italy and the waterfront remain consistently low-crime.</p>
-      <p>This single variable drives most of the safety score variation between routes. The map fractures from near-uniform blue into dramatic reds and blues.</p>
+      <p>This is the layer that breaks the pattern. Reported crime incidents cluster heavily in East Village and along the Convention Center corridor, while Little Italy and the waterfront stay consistently low.</p>
+      <p>Watch the map fracture from near-uniform blue into dramatic reds and blues. This single variable drives most of the safety score gap between routes.</p>
       <p class="scene-note">Red dots show reported crime incidents (SDPD NIBRS 2020-2026). Daytime incidents shown.</p>
     </div>
 
@@ -317,8 +316,8 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 
     <div class="step" data-scene="7">
       <h3>The Twist: Day vs. Night</h3>
-      <p>Here is the surprise: the Gaslamp Quarter actually gets safer at night. More foot traffic, more nightlife, more eyes on the street. Its score improves from 55 to 61.</p>
-      <p>But East Village moves the other direction. The safest route, Little Italy to Seaport Village, barely changes (73 to 72). It is consistently safe regardless of time.</p>
+      <p>Here is the surprise: the Gaslamp Quarter actually gets <em>safer</em> at night. More foot traffic, more nightlife, more eyes on the street. Its score jumps from 55 to 61.</p>
+      <p>East Village moves the other direction. Meanwhile, the safest route (Little Italy to Seaport Village) barely budges: 73 to 72. It is the one path that stays safe around the clock.</p>
       <div class="inline-toggle" id="scroll-time-toggle">
         <button class="active" data-time="day">Day</button>
         <button data-time="night">Night</button>
@@ -328,9 +327,9 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 
     <div class="step" data-scene="8">
       <h3>What This Means</h3>
-      <p>For pedestrians in downtown San Diego, route choice is a safety decision, not just a convenience one. The difference between the safest and least-safe route is 18 points during the day.</p>
-      <p>That gap is driven by one factor: where crime clusters. And unlike infrastructure or walkability, crime patterns shift with time of day.</p>
-      <p>The data cannot make downtown safer. But it can help you choose a safer path through it.</p>
+      <p>Route choice is a safety decision, not just a convenience one. The safest and least-safe paths through downtown are separated by 18 points, and that gap shifts depending on whether you walk at noon or midnight.</p>
+      <p>The scrollytelling above shows why: walkability and infrastructure are almost uniform across downtown, so they cancel out. Crime density is the one variable that fractures the map, and it moves with the clock.</p>
+      <p>A static safety rating would miss that. By layering data step by step and letting you toggle day and night, this visualization reveals a pattern that a single map could not: the safest route at 2 PM is not the safest route at 2 AM.</p>
       <p class="scene-note">Explore the full interactive version below.</p>
     </div>
   </div>
@@ -633,19 +632,18 @@ function setScene(n) {
 
 function addAnnotation(layer, coords, text, color) {
   const [x, y] = scrollProjection(coords);
-  const isNight = state.currentScene === 7 && state.timeOfDay === 'night';
-  const bg = isNight ? '#1a202c' : '#fff';
-  const g = layer.append('g');
+  const g = layer.append('g').style('opacity', 0);
   const txt = g.append('text').attr('x', x).attr('y', y)
-    .text(text).attr('font-size', '15px').attr('fill', color).attr('font-weight', '700')
+    .text(text).attr('font-size', '16px').attr('fill', '#fff').attr('font-weight', '700')
     .style('pointer-events', 'none');
   const bbox = txt.node().getBBox();
-  const px = 9, py = 6;
+  const px = 10, py = 7;
   g.insert('rect', 'text')
     .attr('x', bbox.x - px).attr('y', bbox.y - py)
     .attr('width', bbox.width + px * 2).attr('height', bbox.height + py * 2)
-    .attr('rx', 5).attr('fill', bg).attr('stroke', color).attr('stroke-width', 2)
-    .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))');
+    .attr('rx', 6).attr('fill', color)
+    .style('filter', 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))');
+  g.transition().duration(400).style('opacity', 1);
 }
 
 function updateScrollAnnotations(n) {
@@ -670,9 +668,9 @@ function updateScrollAnnotations(n) {
   if (n === 7) {
     const isNight = state.timeOfDay === 'night';
     if (isNight) {
-      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp improves ↑', '#4ade80');
-      addAnnotation(layer, [-117.148, 32.720], 'East Village worsens ↓', '#f87171');
-      addAnnotation(layer, [-117.178, 32.732], 'Stable: 72/100', '#60a5fa');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp improves ↑', '#16a34a');
+      addAnnotation(layer, [-117.148, 32.720], 'East Village worsens ↓', '#dc2626');
+      addAnnotation(layer, [-117.178, 32.732], 'Stable: 72/100', '#2563eb');
     } else {
       addAnnotation(layer, [-117.178, 32.732], 'Safest: 73/100', '#1d4ed8');
       addAnnotation(layer, [-117.158, 32.697], 'Lowest: 55/100', '#dc2626');
