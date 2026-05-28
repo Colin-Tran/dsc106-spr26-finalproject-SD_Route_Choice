@@ -548,6 +548,7 @@ let data = null;
 let scrollProjection = null;
 let exploreProjection = null;
 let graph = null;
+let exploreZoom = null;
 
 function getTimeBlend() {
   const h = +document.getElementById('time-slider').value;
@@ -1286,6 +1287,7 @@ function drawExploreMap(colorScale) {
       content.attr('transform', event.transform);
     });
   svg.call(zoom);
+  exploreZoom = zoom;
   svg.on('dblclick.zoom', null);
 
   // Zoom controls
@@ -1443,6 +1445,25 @@ function selectRoute(i) {
   updateComparisonHighlight();
   updateRouteContext();
   if (state.mode === 'navigate') updateNavAlternative();
+
+  // Zoom to route bounds
+  if (exploreZoom) {
+    const routeNames = Object.keys(data.routes);
+    const wps = data.routes[routeNames[i]].waypoints;
+    const pts = wps.map(w => exploreProjection(w));
+    const xMin = d3.min(pts, p => p[0]), xMax = d3.max(pts, p => p[0]);
+    const yMin = d3.min(pts, p => p[1]), yMax = d3.max(pts, p => p[1]);
+    const dx = xMax - xMin, dy = yMax - yMin;
+    const svgEl = d3.select('#explore-map-svg');
+    const vw = 800, vh = 760;
+    const scale = Math.min(vw / (dx + 80), vh / (dy + 80), 3);
+    const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
+    const tx = vw / 2 - cx * scale, ty = vh / 2 - cy * scale;
+    svgEl.transition().duration(600).call(
+      exploreZoom.transform,
+      d3.zoomIdentity.translate(tx, ty).scale(scale)
+    );
+  }
 }
 
 function updateRouteContext() {
