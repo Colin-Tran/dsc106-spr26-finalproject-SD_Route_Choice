@@ -882,6 +882,7 @@ function drawScrollMap(colorScale) {
 /* ── Scene transitions ── */
 
 function setScene(n) {
+  const prevScene = state.currentScene;
   state.currentScene = n;
   const svg = d3.select('#map-svg');
   const colorScale = d3.scaleSequential(d3.interpolateRdYlBu).domain([0.19, 1.0]);
@@ -925,7 +926,7 @@ function setScene(n) {
         return colorScale(Math.min(v, 0.92));
       })
       .attr('stroke-opacity', 0.7);
-  } else if (n === 5 && state.currentScene !== 5) {
+  } else if (n === 5 && prevScene !== 5) {
     // Crime reveal: brief flash then fracture
     svg.selectAll('.edge-line')
       .transition().duration(200).attr('stroke-opacity', 0.3)
