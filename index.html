@@ -1149,6 +1149,8 @@ function drawExploreMap(colorScale) {
 
   // Content group for zoom/pan
   const content = svg.append('g').attr('id', 'explore-content');
+  content.append('rect').attr('width', width).attr('height', height)
+    .attr('fill', '#f8f9fa').attr('id', 'explore-bg');
 
   // Water / San Diego Bay
   const waterPath = COASTLINE.map(c => exploreProjection(c));
@@ -1270,11 +1272,9 @@ function updateExploreMap() {
   const container = document.getElementById('explore-map-container');
 
   // Atmosphere: smooth background transition
-  const bgR = Math.round(248 - blend * 233);
-  const bgG = Math.round(249 - blend * 226);
-  const bgB = Math.round(250 - blend * 208);
-  container.style.background = `rgb(${bgR},${bgG},${bgB})`;
+  const bgColor = d3.interpolateRgb('#f8f9fa', '#0f172a')(blend);
   container.style.borderColor = blend > 0.5 ? '#1e293b' : '#e0e0e0';
+  svg.select('#explore-bg').attr('fill', bgColor);
 
   // Water color
   svg.select('#explore-water').attr('fill', d3.interpolateRgb('#bfdbfe', '#0c4a6e')(blend));
