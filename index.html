@@ -1397,10 +1397,13 @@ function selectRoute(i) {
   d3.select('#route-list').selectAll('li')
     .classed('active', (_, j) => j === i)
     .attr('aria-pressed', (_, j) => j === i ? 'true' : 'false');
+  d3.select('#nav-route-list').selectAll('li')
+    .classed('active', (_, j) => j === i);
   updateExploreMap();
   updateScorePanel();
   updateComparisonHighlight();
   updateRouteContext();
+  if (state.mode === 'navigate') updateNavAlternative();
 }
 
 function updateRouteContext() {
