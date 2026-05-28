@@ -942,11 +942,13 @@ function setScene(n) {
     .join(
       enter => enter.append('circle')
         .attr('cx', d => scrollProjection(d.coords)[0]).attr('cy', d => scrollProjection(d.coords)[1])
-        .attr('r', 3).attr('fill', '#ef4444').attr('opacity', 0),
+        .attr('r', 0).attr('fill', '#ef4444').attr('opacity', 0),
       update => update,
-      exit => exit.transition(t).attr('opacity', 0).remove()
+      exit => exit.transition(t).attr('r', 0).attr('opacity', 0).remove()
     )
-    .transition(t).attr('opacity', 0.4);
+    .transition().delay((d, i) => i * 2).duration(300)
+    .attr('r', 4).attr('opacity', 0.5)
+    .transition().duration(200).attr('r', 3).attr('opacity', 0.4);
 
   // Routes
   svg.selectAll('.scroll-route-path').transition(t)
