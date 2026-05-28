@@ -922,7 +922,9 @@ function setScene(n) {
     svg.selectAll('.edge-line').transition(t)
       .attr('stroke', '#999').attr('stroke-opacity', 0.15);
   } else if (n === 3) {
-    svg.selectAll('.edge-line').transition(t)
+    svg.selectAll('.edge-line')
+      .transition().duration(300).attr('stroke-opacity', 0.9)
+      .transition().duration(600)
       .attr('stroke', colorScale(0.85))
       .attr('stroke-opacity', 0.7);
   } else if (n === 4) {
@@ -1713,6 +1715,8 @@ function updateScorePanel() {
   const routeNames = Object.keys(data.routes);
   const route = data.routes[routeNames[state.selectedRoute]];
   const timeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  const allScores = routeNames.map(n => data.routes[n].scores[state.timeOfDay]).sort((a, b) => b - a);
+  const rank = allScores.indexOf(route.scores[state.timeOfDay]) + 1;
   const categories = [
     { key: timeKey, label: 'Crime Safety', color: '#ef4444' },
     { key: 'lighting', label: 'Lighting & Roads', color: '#f59e0b' },
@@ -1721,6 +1725,8 @@ function updateScorePanel() {
   ];
   const container = d3.select('#score-bars');
   container.html('');
+  container.append('div').style('font-size', '11px').style('color', '#888').style('margin-bottom', '8px')
+    .text('#' + rank + ' of ' + routeNames.length + ' routes');
   categories.forEach(cat => {
     const val = route.scores[cat.key];
     const bar = container.append('div').attr('class', 'score-bar');
