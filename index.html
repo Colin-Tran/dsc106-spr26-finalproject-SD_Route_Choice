@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="An interactive exploration of pedestrian safety across 5,500 street segments in downtown San Diego. Score every street, compare routes, watch the city transform from day to night.">
-<title>SafePath: Is Your Walking Route the Safest One?</title>
+<title>Is Your Walking Route the Safest One?</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -381,7 +381,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
 <body>
 
 <header>
-  <h1>SafePath: Is Your Walking Route the Safest One?</h1>
+  <h1>Is Your Walking Route the Safest One?</h1>
   <p class="subtitle">An interactive exploration of pedestrian safety across 5,500 street segments in downtown San Diego</p>
   <p class="subtitle">Brian Sun, Colin Tran, Maxime Chung, Christian Kimayong | DSC 106, Spring 2026</p>
 </header>
@@ -612,7 +612,7 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   <div class="writeup" style="border-top:3px solid #D97706;padding-bottom:16px;">
     <h2 style="margin-bottom:6px;">Takeaway</h2>
     <p style="font-size:15px;color:#333;line-height:1.6;"><strong>Route choice is a safety decision.</strong> Crime density is the single variable that explains nearly all of the 18-point gap between downtown routes. The progressive layer reveal makes that dominance feel inevitable, and the time slider lets you watch safety redistribute after dark. Interaction is not decoration here. It is how the argument works.</p>
-    <p style="font-size:13px;color:#555;line-height:1.6;margin-top:8px;">Three independent teams have tried to build this tool: SafeWalk AI (Bryant University) uses crime data only, Coolight (University of Toronto) uses lighting only, and Ur Next Route (University of Nevada) uses lighting and distance. None combine all three layers. SafePath does.</p>
+    <p style="font-size:13px;color:#555;line-height:1.6;margin-top:8px;">Three independent teams have tried to build this tool: SafeWalk AI (Bryant University) uses crime data only, Coolight (University of Toronto) uses lighting only, and Ur Next Route (University of Nevada) uses lighting and distance. None combine all three layers. This visualization does.</p>
   </div>
 
   <details class="writeup" style="cursor:default;">
@@ -625,13 +625,13 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     <p>We built a scrollytelling visualization that scores every street segment in downtown San Diego for pedestrian safety and maps five walking routes between real destinations. The data comes from four public sources: 46,000 crime incidents (SDPD NIBRS 2020-2026), 55,506 streetlight locations (City of SD inventory), the road network (OpenStreetMap via OSMnx), and walkability scores (EPA Smart Location Database).</p>
     <p>Each of the 5,500 street segments gets a composite safety score that weights crime density (50%), walkability (25%), and lighting (25%). The weights shift at night, giving lighting 30% and crime 45%. We computed scores using kernel density estimation at multiple distance thresholds. The graph has 7,053 nodes and supports real-time pathfinding in the browser.</p>
     <p>The scrollytelling narrative introduces one data layer at a time. The map transitions are animated: streetlights cascade on, crime causes the map to fracture from blue into reds and blues, and toggling to night mode darkens the entire atmosphere with glowing streetlights and pulsing crime dots. Each scene has map annotations that name the neighborhood and explain what the score means.</p>
-    <p>The explore section lets viewers select routes, drag a time slider from 6 AM to midnight (smoothly interpolating edge colors), hover any street segment for its score, and zoom or pan the map. A Navigate tab computes three routing profiles (Fastest, Balanced, Extra Caution) using Dijkstra's algorithm with SafePath's exact cost function. The bar chart follows SWD principles: gray default, amber highlight, direct labels, and a score decomposition breakdown.</p>
+    <p>The explore section lets viewers select routes, drag a time slider from 6 AM to midnight (smoothly interpolating edge colors), hover any street segment for its score, and zoom or pan the map. A Navigate tab computes three routing profiles (Fastest, Balanced, Extra Caution) using Dijkstra's algorithm with a composite cost function. The bar chart follows SWD principles: gray default, amber highlight, direct labels, and a score decomposition breakdown.</p>
 
     <h3>2. What will be the most challenging part of your project to design, and why?</h3>
     <p>The hardest part was making the time-of-day dimension feel real instead of binary. A simple Day/Night toggle does not convey how safety changes gradually. We solved this with a draggable time slider that smoothly interpolates all visual properties: edge colors blend between day and night scores, the background transitions from light to dark, streetlights grow brighter, and crime dots pulse. Insight annotations appear on the map as you cross the evening threshold.</p>
     <p>Another challenge was making 5,500 street edges interactive without overwhelming the viewer. We used scrollytelling to introduce layers progressively and added hover tooltips that only activate after the relevant layer is introduced. The explore section adds zoom, pan, and per-segment tooltips for full exploration.</p>
     <p>Performance was a real concern. Rendering 5,500 edges plus 1,000 streetlights plus 800 crime dots in SVG, with smooth transitions on every slider drag, can lag on slower machines. We optimized by removing expensive SVG filters (blur), using CSS animations instead of JS-driven ones for pulsing dots, and applying clipPaths for the coastline rather than filtering data points.</p>
-    <p>The connection to SafePath (a separate DS3 project building a pedestrian routing app) shaped our design. We adopted their cost function for the three routing profiles and structured the score decomposition to match what their Streamlit app displays. This means our visualization serves both as a standalone explorable explanation and as a visual reference for the SafePath team's own development.</p>
+    <p>The cost function for the three routing profiles weights edge length by safety score, allowing users to trade distance for safety. We structured the score decomposition to show how crime, lighting, and walkability contribute to each route's overall rating.</p>
 
     <h3>3. Who would use this and why does it matter?</h3>
     <p>According to a 2025 Gallup survey, only 38% of US women feel safe walking alone at night, compared to 78% of men. Research from CHI 2024 found that navigation apps like Google Maps route pedestrians through unsafe areas, and that safety-aware routing achieves 183% more use of safe pedestrian areas compared to standard routing. These users already perform mental safety calculations but lack data to support them.</p>
@@ -797,7 +797,7 @@ function findNearestNode(lngLat) {
   return best;
 }
 
-// SafePath cost: edge_length * (1 + multiplier * (1 - score))
+// Cost: edge_length * (1 + multiplier * (1 - score))
 // multiplier=0 → fastest, multiplier=0.5 → balanced, multiplier=1.0 → extra caution
 function dijkstraRoute(startIdx, endIdx, multiplier) {
   const n = graph.nodes.length;
@@ -1917,7 +1917,7 @@ function updateNavAlternative() {
   const startIdx = findNearestNode(startCoords);
   const endIdx = findNearestNode(endCoords);
 
-  // Three SafePath routing profiles
+  // Three routing profiles
   const profiles = [
     { name: 'Fastest', multiplier: 0, color: '#9CA3AF', dash: '6,4', width: 3 },
     { name: 'Balanced', multiplier: 0.5, color: '#D97706', dash: '', width: 4 },
