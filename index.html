@@ -1591,6 +1591,7 @@ function updateExploreMap() {
   const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
   const svg = d3.select('#explore-map-svg');
   const container = document.getElementById('explore-map-container');
+  const content = svg.select('#explore-content');
 
   // Atmosphere: smooth background transition
   const bgColor = d3.interpolateRgb('#f8f9fa', '#0f172a')(blend);
@@ -1697,7 +1698,6 @@ function updateExploreMap() {
   }
 
   // Dynamic insight annotations
-  const content = svg.select('#explore-content');
   content.selectAll('.explore-insight').remove();
   if (blend > 0.6) {
     const insights = [
@@ -1801,8 +1801,7 @@ function selectRoute(i) {
 }
 
 function updateRouteContext() {
-  const routeNames = Object.keys(data.routes);
-  const name = routeNames[state.selectedRoute];
+  const name = d3.select('#route-list li.active div:last-child div:last-child').text();
   const ctx = ROUTE_CONTEXT[name];
   const el = document.getElementById('route-context');
   if (!ctx) { el.innerHTML = ''; return; }
