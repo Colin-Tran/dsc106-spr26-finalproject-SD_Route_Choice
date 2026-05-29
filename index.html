@@ -258,17 +258,16 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 
 @keyframes light-twinkle {
   0%   { r: var(--halo-r); opacity: var(--halo-base); }
-  30%  { r: calc(var(--halo-r) * 1.4); opacity: calc(var(--halo-base) * 1.6); }
-  50%  { r: calc(var(--halo-r) * 1.1); opacity: calc(var(--halo-base) * 1.2); }
-  80%  { r: calc(var(--halo-r) * 1.5); opacity: calc(var(--halo-base) * 1.8); }
+  30%  { r: calc(var(--halo-r) * 1.08); opacity: calc(var(--halo-base) * 1.7); }
+  50%  { r: var(--halo-r); opacity: calc(var(--halo-base) * 0.8); }
+  80%  { r: calc(var(--halo-r) * 1.12); opacity: calc(var(--halo-base) * 1.9); }
   100% { r: var(--halo-r); opacity: var(--halo-base); }
 }
 @keyframes core-flicker {
-  0%,100% { opacity: 0.85; }
-  15% { opacity: 1; }
-  40% { opacity: 0.7; }
-  65% { opacity: 1; }
-  85% { opacity: 0.9; }
+  0%,100% { opacity: 0.75; }
+  20% { opacity: 1; }
+  45% { opacity: 0.55; }
+  70% { opacity: 1; }
 }
 .light-halo.twinkling { animation: light-twinkle var(--twinkle-dur) ease-in-out infinite; }
 .light-core.twinkling { animation: core-flicker var(--twinkle-dur) ease-in-out infinite; }
@@ -1628,8 +1627,8 @@ function updateExploreMap() {
   lightEnter.append('circle').attr('class', 'light-core');
   lightSel.exit().remove();
   const shouldTwinkle = blend > 0.4;
-  const haloR = 3 + blend * 3;
-  const haloOpacity = 0.05 + blend * 0.18;
+  const haloR = 1.5 + blend * 1.5;
+  const haloOpacity = 0.025 + blend * 0.08;
   const lightAll = lightGroup.selectAll('.light-unit');
   lightAll.each(function(d, i) {
     const g = d3.select(this);
