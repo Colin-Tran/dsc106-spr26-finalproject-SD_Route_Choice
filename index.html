@@ -10,7 +10,7 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; line-height: 1.6; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F6F2; color: #1a1a1a; line-height: 1.6; }
 
 header { background: linear-gradient(135deg, #fff 0%, #f7f6f2 100%); border-bottom: 2px solid #D97706; padding: 16px 40px; }
 header h1 { font-size: 22px; font-weight: 600; }
@@ -239,19 +239,19 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .explore-section {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px;
+  padding: 24px 40px;
 }
 .explore-section > h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
 .explore-section > .explore-subtitle { font-size: 13px; color: #666; margin-bottom: 24px; }
 .explore-grid {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: 1fr 280px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 .explore-map { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; position: relative; transition: background 0.8s ease, border-color 0.8s ease; }
 .explore-map.night-mode { background: #0f172a; border-color: #1e293b; }
-#explore-map-svg { width: 100%; height: 760px; }
+#explore-map-svg { width: 100%; height: 560px; }
 
 @keyframes crime-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
 .crime-dot-night { animation: crime-pulse 2.5s ease-in-out infinite; }
@@ -307,20 +307,20 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .score-panel h4 { font-size: 12px; color: #666; margin-bottom: 8px; }
 .score-bar { margin-bottom: 7px; }
 .score-label { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 2px; }
-.score-track { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.score-track { height: 6px; background: #cbd5e0; border-radius: 3px; overflow: hidden; }
 .score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 .score-qual { font-size: 10px; color: #666; margin-top: 1px; }
 
 /* ── Route recommendation banner ── */
 .route-rec {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 .rec-card {
   flex: 1;
   border-radius: 8px;
-  padding: 14px 18px;
+  padding: 10px 14px;
   border: 1px solid #e0e0e0;
   background: #fff;
   transition: all 0.3s ease;
@@ -337,19 +337,19 @@ header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
 .rec-card.shift .rec-label { color: #0891b2; }
 
 /* ── Key findings ── */
-.findings-row { display: flex; gap: 20px; margin-bottom: 30px; }
-.finding-card { flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; border-top: 3px solid #D97706; opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.findings-row { display: flex; gap: 12px; margin-bottom: 16px; }
+.finding-card { flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; text-align: center; border-top: 3px solid #D97706; opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
 .finding-card:nth-child(2) { transition-delay: 0.15s; }
 .finding-card:nth-child(3) { transition-delay: 0.3s; }
 .finding-card.visible { opacity: 1; transform: translateY(0); }
-.finding-number { font-size: 36px; font-weight: 700; color: #D97706; line-height: 1; }
+.finding-number { font-size: 28px; font-weight: 700; color: #D97706; line-height: 1; }
 .finding-label { font-size: 13px; color: #555; margin-top: 8px; line-height: 1.4; }
 
 /* ── Chart ── */
 .chart-section { background: #F7F6F2; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
 .chart-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
 .chart-section .chart-subtitle { font-size: 12px; color: #666; margin-bottom: 14px; }
-#comparison-chart { width: 100%; height: 340px; }
+#comparison-chart { width: 100%; height: 280px; }
 
 /* ── Writeup ── */
 .writeup { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 28px; margin-bottom: 30px; }
@@ -504,26 +504,40 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
   <div class="bridge-line"></div>
 </div>
 <div class="explore-section">
-  <h2>Explore the Routes</h2>
-  <p class="explore-subtitle">Click a route on the right to highlight it on the map. Drag the time slider to watch the city transform from day to night. Hover any street segment to see its safety score. Switch to Navigate to compare three routing strategies for the same trip.</p>
-
-  <div class="route-rec" id="route-rec">
-    <div class="rec-card safest">
-      <div class="rec-label">Safest route</div>
-      <div class="rec-route" id="rec-safest-name"></div>
-      <div class="rec-score" id="rec-safest-score"></div>
-    </div>
-    <div class="rec-card avoid">
-      <div class="rec-label">Highest risk</div>
-      <div class="rec-route" id="rec-avoid-name"></div>
-      <div class="rec-score" id="rec-avoid-score"></div>
-    </div>
-    <div class="rec-card shift">
-      <div class="rec-label">Biggest day/night shift</div>
-      <div class="rec-route" id="rec-shift-name"></div>
-      <div class="rec-score" id="rec-shift-score"></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <h2 style="font-size:16px;margin:0;">Your turn: which route would you take?</h2>
+    <div style="display:flex;gap:12px;font-size:11px;" id="route-rec">
+      <span><span style="color:#2563eb;font-weight:600;">Safest:</span> <span id="rec-safest-name"></span> <span id="rec-safest-score" style="color:#888;"></span></span>
+      <span><span style="color:#D97706;font-weight:600;">Riskiest:</span> <span id="rec-avoid-name"></span> <span id="rec-avoid-score" style="color:#888;"></span></span>
+      <span><span style="color:#0891b2;font-weight:600;">Biggest shift:</span> <span id="rec-shift-name"></span> <span id="rec-shift-score" style="color:#888;"></span></span>
     </div>
   </div>
+
+  <!-- Compact control bar above the map -->
+  <div style="display:flex;gap:10px;margin-bottom:8px;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:10px 14px;align-items:center;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+        <span style="font-size:10px;color:#888;white-space:nowrap;" id="date-readout">Jun 15</span>
+        <input type="range" min="1" max="365" value="166" step="1" id="date-slider" style="flex:1;accent-color:#D97706;" aria-label="Day of year">
+      </div>
+      <div id="sun-info" style="font-size:9px;color:#aaa;"></div>
+    </div>
+    <div style="flex:2;min-width:200px;">
+      <div class="time-slider-track" id="time-slider-track" style="height:26px;border-radius:13px;">
+        <input type="range" min="5" max="24" value="12" step="0.5" class="time-slider-input" id="time-slider" aria-label="Time of day" style="height:26px;">
+      </div>
+      <div class="time-slider-readout day" id="time-readout" style="font-size:11px;margin-top:2px;">&#9728; 12:00 PM (Daytime)</div>
+    </div>
+    <div style="width:1px;height:28px;background:#e0e0e0;"></div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div style="font-size:10px;color:#555;">Crime<br><input type="range" min="0" max="100" value="50" id="w-crime" style="width:60px;accent-color:#e8590c;"><span id="w-crime-val" style="font-size:9px;color:#888;margin-left:2px;">50%</span></div>
+      <div style="font-size:10px;color:#555;">Light<br><input type="range" min="0" max="100" value="25" id="w-light" style="width:60px;accent-color:#64748b;"><span id="w-light-val" style="font-size:9px;color:#888;margin-left:2px;">25%</span></div>
+      <div style="font-size:10px;color:#555;">Walk<br><input type="range" min="0" max="100" value="25" id="w-walk" style="width:60px;accent-color:#2166ac;"><span id="w-walk-val" style="font-size:9px;color:#888;margin-left:2px;">25%</span></div>
+      <button id="w-reset" style="padding:3px 8px;font-size:10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:#888;" title="Reset weights">Reset</button>
+    </div>
+    <div class="toggle-btn on" id="tog-edges" role="switch" tabindex="0" aria-label="Toggle street safety layer" style="flex-shrink:0;"></div>
+  </div>
+  <div id="weight-insight" style="font-size:12px;color:#92400e;font-weight:600;min-height:0;padding:0 14px;border-radius:6px;background:transparent;transition:all 0.3s ease;overflow:hidden;"></div>
 
   <div class="explore-grid">
     <div class="explore-map" id="explore-map-container">
@@ -542,65 +556,15 @@ footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
       </div>
       <div id="suggested-panel">
         <h3>Select Route</h3>
-        <p style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.4;">Five common trip types: transit commute, event night, leisure walk, daily errand, park visit. Each crosses different safety zones.</p>
+        <p style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.4;">Five common trip types. Each crosses different safety zones.</p>
         <ul class="route-list" id="route-list"></ul>
         <div class="route-context" id="route-context"></div>
       </div>
       <div id="navigate-panel" class="nav-panel" style="display:none;">
-        <p class="nav-instruction">Three routing profiles for the same trip: Fastest (shortest distance), Balanced, and Extra Caution (safest). See where they diverge on the map.</p>
+        <p class="nav-instruction">Three routing profiles: Fastest, Balanced, Extra Caution. See where they diverge.</p>
         <h3 style="margin-bottom:8px;">Select a trip</h3>
         <ul class="route-list" id="nav-route-list"></ul>
         <div id="nav-comparison"></div>
-      </div>
-      <div>
-        <h3>Date &amp; Time</h3>
-        <div style="margin-bottom:10px;">
-          <div style="font-size:11px;color:#555;margin-bottom:4px;">Date of year</div>
-          <input type="range" min="1" max="365" value="166" step="1" id="date-slider" style="width:100%;accent-color:#D97706;" aria-label="Day of year, January 1 to December 31">
-          <div style="display:flex;justify-content:space-between;font-size:9px;color:#aaa;margin-top:1px;">
-            <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Dec</span>
-          </div>
-          <div id="date-readout" style="text-align:center;font-size:12px;font-weight:600;color:#555;margin-top:4px;">Jun 15</div>
-          <div id="sun-info" style="text-align:center;font-size:11px;color:#888;margin-top:2px;"></div>
-        </div>
-        <div class="time-slider-container">
-          <div class="time-slider-track" id="time-slider-track">
-            <input type="range" min="5" max="24" value="12" step="0.5" class="time-slider-input" id="time-slider" aria-label="Time of day slider">
-          </div>
-          <div class="time-slider-ticks" id="time-slider-ticks">
-            <span class="time-slider-tick">5 AM</span>
-            <span class="time-slider-tick">12 PM</span>
-            <span class="time-slider-tick boundary" id="sunset-tick">Sunset</span>
-            <span class="time-slider-tick">12 AM</span>
-          </div>
-          <div class="time-slider-readout day" id="time-readout">&#9728; 12:00 PM (Daytime)</div>
-          <div style="font-size:10px;color:#aaa;text-align:center;margin-top:2px;">Drag to watch downtown transform</div>
-        </div>
-      </div>
-      <div>
-        <h3>Map Layers</h3>
-        <div class="toggle-group">
-          <div class="toggle-row"><span>Street safety colors</span><div class="toggle-btn on" id="tog-edges" role="switch" tabindex="0" aria-label="Toggle street safety layer"></div></div>
-        </div>
-        <p style="font-size:11px;color:#888;margin-top:6px;">Streetlights and crime incidents update automatically with time of day.</p>
-      </div>
-      <div>
-        <h3>What drives safety? <span style="font-size:10px;font-weight:400;color:#888;">Drag to find out</span></h3>
-        <div style="font-size:11px;color:#666;margin-bottom:8px;">Adjust how much each factor matters. Watch the map change.</div>
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Crime density</span><span id="w-crime-val">50%</span></div>
-          <input type="range" min="0" max="100" value="50" id="w-crime" style="width:100%;accent-color:#e8590c;">
-        </div>
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Lighting &amp; roads</span><span id="w-light-val">25%</span></div>
-          <input type="range" min="0" max="100" value="25" id="w-light" style="width:100%;accent-color:#64748b;">
-        </div>
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:2px;"><span>Walkability</span><span id="w-walk-val">25%</span></div>
-          <input type="range" min="0" max="100" value="25" id="w-walk" style="width:100%;accent-color:#2166ac;">
-        </div>
-        <div id="weight-insight" style="font-size:11px;color:#D97706;font-weight:500;margin-top:6px;min-height:16px;"></div>
-        <button id="w-reset" style="margin-top:6px;padding:5px 12px;font-size:11px;border:1px solid #e0e0e0;border-radius:5px;background:#fff;cursor:pointer;color:#555;width:100%;">Reset to default weights</button>
       </div>
       <div class="score-panel" id="score-panel">
         <h4 id="score-panel-title">Safety Breakdown</h4>
@@ -703,7 +667,7 @@ function computeSunTimes(dayOfYear) {
   const decl = -23.44 * Math.cos(2 * Math.PI * (dayOfYear + 10) / 365) * Math.PI / 180;
   const cosHA = -Math.tan(lat) * Math.tan(decl);
   const ha = Math.acos(Math.max(-1, Math.min(1, cosHA))) * 180 / Math.PI;
-  const solarNoon = 12 + (117.16 / 15) - (-8);
+  const solarNoon = 12 - (-117.16 / 15) + (-7);
   const sunrise = solarNoon - ha / 15;
   const sunset = solarNoon + ha / 15;
   const civilDawn = sunrise - 0.5;
@@ -749,7 +713,8 @@ function updateSunUI() {
   const track = document.getElementById('time-slider-track');
   track.style.background = `linear-gradient(to right, #0f172a 0%, #1e3a5f ${sunrisePct}%, #fbbf24 ${(+sunrisePct + 8)}%, #fef3c7 35%, #fef3c7 ${sunsetPct}%, #f59e0b ${sunsetPct}%, #1e3a5f ${duskPct}%, #0f172a 100%)`;
   // Update sunset tick label
-  document.getElementById('sunset-tick').textContent = formatHour(sunTimes.sunset);
+  const sunsetTick = document.getElementById('sunset-tick');
+  if (sunsetTick) sunsetTick.textContent = formatHour(sunTimes.sunset);
   // Daylight hours
   const daylight = (sunTimes.sunset - sunTimes.sunrise).toFixed(1);
   document.getElementById('sun-info').textContent +=
@@ -1073,10 +1038,7 @@ function drawScrollMap(colorScale) {
       .text('San Diego').attr('font-size', '10px').attr('fill', '#333')
       .attr('text-anchor', 'start').attr('font-weight', '700');
     inset.append('text').attr('x', 55).attr('y', 79)
-      .text('California, USA').attr('font-size', '8px').attr('fill', '#888')
-      .attr('text-anchor', 'start');
-    inset.append('text').attr('x', 55).attr('y', 90)
-      .text('Pop. 1.4 million').attr('font-size', '7.5px').attr('fill', '#aaa')
+      .text('California, USA').attr('font-size', '9px').attr('fill', '#888')
       .attr('text-anchor', 'start');
     // Connector line from dot to label
     inset.append('line').attr('x1', sdCoords[0] + 4).attr('y1', sdCoords[1])
@@ -1087,20 +1049,17 @@ function drawScrollMap(colorScale) {
   // Neighborhood labels
   const labels = svg.append('g').attr('id', 'scroll-labels');
   [
-    { name: 'Little Italy', coords: [-117.1720, 32.7250], anchor: 'end' },
-    { name: 'Gaslamp Qtr', coords: [-117.1620, 32.7110], anchor: 'end' },
-    { name: 'East Village', coords: [-117.1480, 32.7150], anchor: 'start' },
-    { name: 'Marina', coords: [-117.1720, 32.7090], anchor: 'end' },
-    { name: 'Cortez Hill', coords: [-117.1650, 32.7230], anchor: 'end' },
+    { name: 'Little Italy', coords: [-117.1740, 32.7260], anchor: 'end' },
+    { name: 'Gaslamp', coords: [-117.1620, 32.7100], anchor: 'end' },
+    { name: 'East Village', coords: [-117.1460, 32.7160], anchor: 'start' },
     { name: 'Hillcrest', coords: [-117.1650, 32.7480], anchor: 'end' },
-    { name: 'Balboa Park', coords: [-117.1460, 32.7320], anchor: 'start' },
-    { name: 'Convention Ctr', coords: [-117.1580, 32.7035], anchor: 'middle' }
+    { name: 'Balboa Park', coords: [-117.1440, 32.7340], anchor: 'start' }
   ].forEach(n => {
     const [x, y] = scrollProjection(n.coords);
     labels.append('text').attr('x', x).attr('y', y)
-      .text(n.name).attr('font-size', '14px').attr('fill', '#222')
-      .attr('text-anchor', n.anchor).attr('font-weight', '700')
-      .attr('stroke', '#fff').attr('stroke-width', 4.5).attr('paint-order', 'stroke')
+      .text(n.name).attr('font-size', '12px').attr('fill', '#222')
+      .attr('text-anchor', n.anchor).attr('font-weight', '600')
+      .attr('stroke', '#fff').attr('stroke-width', 4).attr('paint-order', 'stroke')
       .style('pointer-events', 'none');
   });
 }
@@ -1111,7 +1070,9 @@ function setScene(n) {
   const prevScene = state.currentScene;
   state.currentScene = n;
   const svg = d3.select('#map-svg');
-  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
+  const nightShift = n === 7 && state.timeOfDay === 'night';
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t))
+    .domain(nightShift ? [0.0, 0.4, 1.0] : [0.0, 0.5, 1.0]);
   const routeNames = Object.keys(data.routes);
   const t = d3.transition().duration(600);
 
@@ -1131,11 +1092,14 @@ function setScene(n) {
 
   // Map subtitle
   const labels = [
-    '', 'Downtown San Diego', 'Safety Score Methodology',
-    'Walkable Streets', 'Lighting & Roads',
-    'Composite Safety Score (Crime Dominant)', 'Route Comparison (Day)',
-    n === 7 && state.timeOfDay === 'night' ? 'Route Comparison (Night)' : 'Route Comparison (Day vs. Night)',
-    'Full Exploration Mode'
+    '', '5,500 street segments in downtown San Diego',
+    'Three datasets combine into one safety score',
+    'Walkability is uniform. It does not explain the gap.',
+    'Lighting has gaps, but not enough to explain 18 points',
+    'Crime density fractures the map',
+    'The safest route scores 73. The worst scores 55.',
+    n === 7 && state.timeOfDay === 'night' ? 'Some routes get safer at night' : 'Safety shifts between day and night',
+    'Route choice is a safety decision'
   ];
   d3.select('#map-label').text(labels[n] || '');
 
@@ -1172,6 +1136,7 @@ function setScene(n) {
     const timeKey = (n === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
     svg.selectAll('.edge-line').transition(t)
       .attr('stroke', d => colorScale(d[timeKey]))
+      .attr('stroke-width', isNight ? 3.5 : 2.5)
       .attr('stroke-opacity', 0.75);
   }
 
@@ -1214,8 +1179,11 @@ function setScene(n) {
   scrollLightAll.transition().delay((d, i) => i * 1.5).duration(400).style('opacity', 1);
 
   // Crime
-  const showCrime = (n === 5);
-  const crimeData = showCrime && data.crime ? data.crime.filter(c => c.hour >= 6 && c.hour < 18) : [];
+  const showCrime = (n === 5) || (n === 7);
+  const nightCrime = n === 7 && state.timeOfDay === 'night';
+  const crimeData = showCrime && data.crime
+    ? data.crime.filter(c => nightCrime ? (c.hour >= 18 || c.hour < 6) : (c.hour >= 6 && c.hour < 18))
+    : [];
   svg.select('#scroll-crime').selectAll('circle')
     .data(crimeData, (d, i) => i)
     .join(
@@ -1468,7 +1436,7 @@ function setupScrollTimeToggle() {
 function drawExploreMap(colorScale) {
   const svg = d3.select('#explore-map-svg');
   const width = 800;
-  const height = 760;
+  const height = 560;
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
   const defs = svg.append('defs');
@@ -1707,28 +1675,27 @@ function updateExploreMap() {
   svg.selectAll('.explore-label')
     .attr('fill', labelFill).attr('stroke', labelStroke);
 
-  // Route score badges on all routes
+  // Route score badge on selected route only
   const routeNames = Object.keys(data.routes);
   content.selectAll('.route-badge').remove();
-  routeNames.forEach((name, i) => {
-    const route = data.routes[name];
-    const mid = route.waypoints[Math.floor(route.waypoints.length / 2)];
-    const [bx, by] = exploreProjection(mid);
-    const score = Math.round(route.scores[state.timeOfDay] * 100);
-    const isSelected = i === state.selectedRoute;
-    const g = content.append('g').attr('class', 'route-badge')
-      .style('opacity', isSelected ? 1 : 0.5);
+  const selName = routeNames[state.selectedRoute];
+  const selRoute = data.routes[selName];
+  const selMid = selRoute.waypoints[Math.floor(selRoute.waypoints.length / 2)];
+  const [bx, by] = exploreProjection(selMid);
+  const selScore = Math.round(selRoute.scores[state.timeOfDay] * 100);
+  {
+    const g = content.append('g').attr('class', 'route-badge');
     const txt = g.append('text').attr('x', bx).attr('y', by - 10)
-      .text(score).attr('font-size', isSelected ? '13px' : '11px').attr('font-weight', '700')
-      .attr('fill', blend > 0.5 ? '#fff' : route.color)
+      .text(selScore).attr('font-size', '13px').attr('font-weight', '700')
+      .attr('fill', blend > 0.5 ? '#fff' : selRoute.color)
       .attr('text-anchor', 'middle').style('pointer-events', 'none');
     const bbox = txt.node().getBBox();
     g.insert('rect', 'text')
       .attr('x', bbox.x - 4).attr('y', bbox.y - 2)
       .attr('width', bbox.width + 8).attr('height', bbox.height + 4)
-      .attr('rx', 4).attr('fill', blend > 0.5 ? route.color : '#fff')
+      .attr('rx', 4).attr('fill', blend > 0.5 ? selRoute.color : '#fff')
       .attr('opacity', 0.85);
-  });
+  }
 
   // Dynamic insight annotations
   const content = svg.select('#explore-content');
@@ -2102,17 +2069,16 @@ function updateRecommendation() {
   const hr = h > 12 ? h - 12 : h;
   const ampm = (h >= 12 && h < 24) ? 'PM' : 'AM';
   const timeStr = hr + ' ' + ampm;
-  const timeLabel = 'Safest route at ' + timeStr;
-  const avoidLabel = 'Highest risk at ' + timeStr;
-  document.querySelector('.rec-card.safest .rec-label').textContent = timeLabel;
-  document.querySelector('.rec-card.avoid .rec-label').textContent = avoidLabel;
-  document.getElementById('rec-safest-name').textContent = safest.name;
-  document.getElementById('rec-safest-score').textContent = Math.round(safest.score * 100) + '/100 · ~' + safest.walkMin + ' min';
-  document.getElementById('rec-avoid-name').textContent = worst.name;
-  document.getElementById('rec-avoid-score').textContent = Math.round(worst.score * 100) + '/100 · ~' + worst.walkMin + ' min';
-  document.getElementById('rec-shift-name').textContent = bigShift.name;
+  const shortSafest = safest.name.split(' to ')[0];
+  const shortWorst = worst.name.split(' to ')[0];
+  const shortShift = bigShift.name.split(' to ')[0];
   const sign = bigShift.delta > 0 ? '+' : '';
-  document.getElementById('rec-shift-score').textContent = sign + bigShift.delta + ' points at night' + (bigShift.delta > 0 ? ' (safer)' : ' (riskier)');
+  document.getElementById('rec-safest-name').textContent = shortSafest;
+  document.getElementById('rec-safest-score').textContent = '(' + Math.round(safest.score * 100) + ')';
+  document.getElementById('rec-avoid-name').textContent = shortWorst;
+  document.getElementById('rec-avoid-score').textContent = '(' + Math.round(worst.score * 100) + ')';
+  document.getElementById('rec-shift-name').textContent = shortShift;
+  document.getElementById('rec-shift-score').textContent = sign + bigShift.delta + 'pts';
 }
 
 /* ═══ COMPARISON CHART ═══ */
@@ -2285,6 +2251,7 @@ function updateWeightInsight() {
   } else {
     wInsight.textContent = '';
   }
+  wInsight.style.background = wInsight.textContent ? '#FEF3C7' : 'transparent';
 }
 
 function onWeightChange() {
