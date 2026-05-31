@@ -1,151 +1,165 @@
-# dsc106-spr26-finalproject-SD_Route_Choice
-
 # Exploring Pedestrian Safety and Walkability in Downtown San Diego
 
 DSC 106 Final Project — Spring 2026  
-Brian Sun, Colin Tran, Maxime Chung, Christian Kimayong
+Brian Sun • Colin Tran • Maxime Chung • Christian Kimayong
 
 ---
 
 ## Project Overview
 
-This project is an interactive explorable explanation that analyzes the safety and walkability of several popular pedestrian routes throughout downtown San Diego. Rather than comparing routes only by distance, we explore how factors such as crime, lighting, pedestrian activity, and infrastructure influence the overall pedestrian experience.
+This project explores how pedestrians experience different walking routes throughout downtown San Diego. Rather than optimizing only for shortest distance, we evaluate routes using a combination of crime density, walkability, lighting coverage, and road infrastructure to better understand how “safe” and “comfortable” different routes may feel during both daytime and nighttime conditions.
 
-The project focuses on helping users understand how different environmental and social factors shape perceptions of pedestrian safety across different locations and times of day.
+Using publicly available datasets and interactive scrollytelling techniques, we visualize how route safety changes as additional contextual factors are introduced throughout the narrative.
 
----
+The final result is an explorable explanation built with D3.js that allows users to:
 
-## Core Question
-
-> What actually makes a walking route feel safe?
-
-Our project compares routes using multiple datasets and allows users to explore how changing priorities and conditions affect route safety scores.
-
----
-
-## Features (in progress / more to come)
-
-- Interactive downtown San Diego route map
-- Day vs. night safety comparison
-- Route safety breakdown panels
-- Route comparison chart
-- Toggleable map layers
-- Scrollytelling narrative structure
-- Interactive route selection
-- Composite route safety scoring
+- Compare several popular downtown walking routes
+- Explore how route safety changes throughout the day
+- Understand how different variables contribute to a composite safety score
+- Interactively investigate tradeoffs between convenience and perceived pedestrian safety
 
 ---
 
-## Routes Analyzed
+# Narrative Concept
 
-- Santa Fe Depot → Petco Park
-- Gaslamp Quarter → Convention Center
-- Little Italy → Seaport Village
-- East Village → 12th & Imperial
-- Hillcrest → Balboa Park
+The project follows a chronological “San Diego evening” narrative structure.
+
+As users scroll through the page, the visualization progressively introduces:
+
+1. Route distance / Walkability
+2. Crime density
+3. Road infrastructure and lighting
+4. Nighttime conditions
+5. Final route comparisons
+
+This allows users to experience route selection as a realistic urban decision-making process rather than simply viewing static charts or rankings.
 
 ---
 
-## Datasets
+# Technologies Used
 
-### Crime Data
-- San Diego NIBRS Crime Data (2020–2026)
-- Police Calls for Service
+- D3.js
+- Mapbox GL JS
+- Scrollama
+- HTML / CSS / JavaScript
+- Python (data preprocessing)
+- GeoJSON
 
-Source:
+---
+
+# Datasets
+
+## Crime Data
+
+San Diego Police Department NIBRS incident data:
+- Crime locations
+- Crime type
+- Timestamp information
+
+Source:  
 https://data.sandiego.gov/datasets/police-nibrs/
 
 ---
 
-### Pedestrian Traffic
-- CityIQ Pedestrian Density Data
-- Pedestrian Block Activity Data
+## Lighting Infrastructure
+
+Operational streetlight inventory from the City of San Diego.
 
 Sources:
-https://data.sandiegodata.org/dataset/sandiegodata-org-pedestrian-blocks/
-
-https://data.sandiegodata.org/dataset/cityiq-io-pedestrians-san-diego/
+- https://streets.sandiego.gov
+- https://www.arcgis.com/home/item.html?id=b7a9d7e335f34be7b801614f765232c0
 
 ---
 
-### Lighting / Infrastructure
-- San Diego Streetlight Data
-- SanGIS / ArcGIS Infrastructure Layers
+## Walkability Data
 
-Sources:
-https://streets.sandiego.gov
+EPA National Walkability Index data used to estimate pedestrian friendliness and urban accessibility.
 
-https://www.arcgis.com/home/item.html?id=b7a9d7e335f34be7b801614f765232c0
-
----
-
-### Walkability
-- EPA National Walkability Index
-- Smart Location Database
-
-Source:
+Source:  
 https://www.kaggle.com/datasets/stacey06/u-s-walkability-index
 
 ---
 
-### Route Geometry
-- OpenStreetMap (OSMnx)
-- Google Maps / Mapbox Directions APIs
+## Road Infrastructure
 
-Sources:
-https://developers.google.com/maps/documentation/directions
-
-https://www.mapbox.com
+Road geometry and road classification data generated using:
+- Mapbox
 
 ---
 
-## Safety Scoring
+# Route Safety Scoring
 
-The project uses a composite safety scoring system inspired by the SafePath methodology.
+Each street segment receives a composite safety score based on four major categories:
 
-Each route score combines:
-- Crime density
-- Pedestrian activity
-- Lighting coverage
+```text
+Safety Score =
+Wcrime × Crime Density
++ Wwalk × Walkability
++ Wlight × Lighting Coverage
++ Wroad × Road Infrastructure
+```
+
+Road infrastructure includes:
 - Road classification
-- Walkability metrics
+- Pedestrian suitability
+- Major road exposure
 
-Separate daytime and nighttime safety scores are computed for each route.
-
----
-
-## Technologies Used
-
-- HTML
-- CSS
-- JavaScript
-- D3.js
-- GeoJSON
-- Mapbox GL JS
-- Python
-- GeoPandas
-- OSMnx
+The weighting system changes between daytime and nighttime conditions to reflect changing pedestrian priorities after dark.
 
 ---
 
-## Repository Structure
+# Routes Analyzed
 
-```txt
-project-root/
+The project currently evaluates the following downtown San Diego routes:
+
+- Santa Fe Depot → Petco Park
+- Gaslamp Quarter → Convention Center
+- Little Italy → Seaport Village
+- East Village → 12th & Imperial Transit Center
+- Hillcrest → Balboa Park
+
+These routes were selected based on:
+- tourism popularity
+- pedestrian activity
+- commuting patterns
+- nightlife traffic
+- event-based movement (Padres games, conventions, etc.)
+
+---
+
+# Features
+
+## Interactive Scrollytelling
+Narrative-driven scrolling experience using Scrollama.
+
+## Dynamic Route Highlighting
+Routes update visually based on user selection.
+
+## Day / Night Mode
+Visualization and safety scoring dynamically shift between daytime and nighttime conditions.
+
+## Composite Safety Score
+Real-time score calculation based on selected route and current safety variables.
+
+## Route Comparison Visualization
+Interactive comparison of all routes across multiple safety dimensions.
+
+## Progressive Data Reveal
+Additional contextual layers appear as the user scrolls through the narrative.
+
+
+# Project Structure
+
+```text
+project/
 │
+├── routes.geojson
+│── main.js
 ├── index.html
 ├── style.css
-├── main.js
-│
-├── data/
-│   ├── routes.geojson
-│   ├── crime_cleaned.csv
-│   ├── pedestrian_blocks.csv
-│   ├── streetlights.geojson
-│   └── route_scores.csv
-│
-├── scripts/
-│   
-├── images/
-│
 └── README.md
+```
+
+Created for DSC 106 — Data Visualization  
+University of California, San Diego  
+Spring 2026
