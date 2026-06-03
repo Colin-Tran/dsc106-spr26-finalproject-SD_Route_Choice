@@ -1,440 +1,1735 @@
-import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
-import scrollama from 'https://cdn.jsdelivr.net/npm/scrollama@3.2.0/+esm';
+const state = { selectedRoute: 0, timeOfDay: 'day', showEdges: true, currentScene: 0, mode: 'suggested' };
+let data = null;
+let scrollProjection = null;
+let exploreProjection = null;
+let graph = null;
+let exploreZoom = null;
 
-const routes = [
-  {
-    name: "Santa Fe Depot to Petco Park",
-    short: "Santa Fe Depot → Petco",
-    color: "#4e79a7",
-    crimeDay: 63,
-    crimeNight: 58,
-    infra: 91,
-    walk: 50
-  },
-  {
-    name: "Gaslamp to Convention Center",
-    short: "Gaslamp → Convention",
-    color: "#f28e2b",
-    crimeDay: 42,
-    crimeNight: 50,
-    infra: 87,
-    walk: 50
-  },
-  {
-    name: "Little Italy to Seaport Village",
-    short: "Little Italy → Seaport",
-    color: "#59a14f",
-    crimeDay: 80,
-    crimeNight: 78,
-    infra: 83,
-    walk: 50
-  },
-  {
-    name: "East Village to 12th & Imperial",
-    short: "East Village → 12th",
-    color: "#b07aa1",
-    crimeDay: 64,
-    crimeNight: 71,
-    infra: 92,
-    walk: 50
-  },
-  {
-    name: "Hillcrest to Balboa Park",
-    short: "Hillcrest → Balboa",
-    color: "#76b7b2",
-    crimeDay: 59,
-    crimeNight: 74,
-    infra: 69,
-    walk: 50
-  }
-];
+/* ═══ SOLAR CALCULATIONS (San Diego 32.72°N, -117.16°W) ═══ */
+const SD_LAT = 32.72;
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_MID_DOY = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349];
 
-let selectedRoute = routes[0];
-let timeOfDay = "day";
-let activeLayer = "distance";
-
-const routeList = d3.select("#route-list");
-
-routeList.selectAll(".route-option")
-  .data(routes)
-  .join("div")
-  .attr("class", d => d.name === selectedRoute.name ? "route-option active" : "route-option")
-  .html(d => `
-    <span class="route-color" style="background:${d.color}"></span>
-    <span>${d.name}</span>
-  `)
-  .on("click", (event, d) => {
-    selectedRoute = d;
-    update();
-  });
-
-d3.select("#day-btn").on("click", () => {
-  timeOfDay = "day";
-  d3.select("#day-btn").classed("active", true);
-  d3.select("#night-btn").classed("active", false);
-  update();
-});
-
-d3.select("#night-btn").on("click", () => {
-  timeOfDay = "night";
-  d3.select("#day-btn").classed("active", false);
-  d3.select("#night-btn").classed("active", true);
-  update();
-});
-
-mapboxgl.accessToken = "pk.eyJ1IjoiY290MDA1IiwiYSI6ImNtcDdyY293YzA0dWwycm9vMWI1b3c1a2gifQ.xnmRfXDpmNiLHhWphuPh-g";
-
-const map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/mapbox/light-v11",
-  //style: "mapbox://styles/cot005/cmpnhldw3003m01r8a5gfg34l",
-  center: [-117.1611, 32.7157],
-  zoom: 13
-});
-
-const routeCoords = [
-  {
-    name: "Santa Fe Depot to Petco Park",
-    color: "#4e79a7",
-    start: [-117.1695, 32.7169],
-    end: [-117.1566, 32.7073]
-  },
-  {
-    name: "Gaslamp to Convention Center",
-    color: "#f28e2b",
-    start: [-117.1606, 32.7114],
-    end: [-117.1601, 32.7066]
-  },
-  {
-    name: "Little Italy to Seaport Village",
-    color: "#59a14f",
-    start: [-117.1687, 32.7241],
-    end: [-117.1717, 32.7098]
-  },
-  {
-    name: "East Village to 12th & Imperial",
-    color: "#b07aa1",
-    start: [-117.1512, 32.7110],
-    end: [-117.1530, 32.7064]
-  },
-  {
-    name: "Hillcrest to Balboa Park",
-    color: "#76b7b2",
-    start: [-117.1605, 32.7482],
-    end: [-117.1467, 32.7341]
-  }
-];
-
-async function fetchRoute(route) {
-  const url =
-    `https://api.mapbox.com/directions/v5/mapbox/walking/` +
-    `${route.start[0]},${route.start[1]};${route.end[0]},${route.end[1]}` +
-    `?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
-
-  const res = await fetch(url);
-  const json = await res.json();
-
-  return {
-    type: "Feature",
-    properties: {
-      name: route.name,
-      color: route.color,
-      distance: json.routes[0].distance,
-      duration: json.routes[0].duration
-    },
-    geometry: json.routes[0].geometry
-  };
+function computeSunTimes(dayOfYear) {
+  const lat = SD_LAT * Math.PI / 180;
+  const decl = -23.44 * Math.cos(2 * Math.PI * (dayOfYear + 10) / 365) * Math.PI / 180;
+  const cosHA = -Math.tan(lat) * Math.tan(decl);
+  const ha = Math.acos(Math.max(-1, Math.min(1, cosHA))) * 180 / Math.PI;
+  const solarNoon = 12 - (-117.16 / 15) + (-7);
+  const sunrise = solarNoon - ha / 15;
+  const sunset = solarNoon + ha / 15;
+  const civilDawn = sunrise - 0.5;
+  const civilDusk = sunset + 0.5;
+  return { sunrise: Math.round(sunrise * 2) / 2, sunset: Math.round(sunset * 2) / 2, dawn: Math.round(civilDawn * 2) / 2, dusk: Math.round(civilDusk * 2) / 2 };
 }
 
-async function loadRoutes() {
-  const features = await Promise.all(routeCoords.map(fetchRoute));
+let sunTimes = computeSunTimes(166);
 
-  const routesGeoJSON = {
-    type: "FeatureCollection",
-    features
-  };
+function getTimeBlend() {
+  const h = +document.getElementById('time-slider').value;
+  const fadeStart = sunTimes.sunset - 1.5;
+  const fadeEnd = sunTimes.dusk;
+  if (h <= fadeStart) return 0;
+  if (h >= fadeEnd) return 1;
+  return (h - fadeStart) / (fadeEnd - fadeStart);
+}
 
-  map.addSource("routes", {
-    type: "geojson",
-    data: routesGeoJSON
-  });
+function formatHour(h) {
+  const hr = Math.floor(h);
+  const min = (h % 1) >= 0.5 ? '30' : '00';
+  const ampm = hr >= 12 && hr < 24 ? 'PM' : 'AM';
+  const display = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr);
+  return display + ':' + min + ' ' + ampm;
+}
 
-  map.addLayer({
-    id: "routes-layer",
-    type: "line",
-    source: "routes",
-    layout: {
-      "line-join": "round",
-      "line-cap": "round"
-    },
-    paint: {
-      "line-color": ["get", "color"],
-      "line-width": 5,
-      "line-opacity": 0.8
+function doyToDateStr(doy) {
+  const d = new Date(2026, 0, doy);
+  return MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+}
+
+function updateSunUI() {
+  const doy = +document.getElementById('date-slider').value;
+  sunTimes = computeSunTimes(doy);
+  document.getElementById('date-readout').textContent = doyToDateStr(doy);
+  document.getElementById('sun-info').textContent =
+    'Sunrise ' + formatHour(sunTimes.sunrise) + '  ·  Sunset ' + formatHour(sunTimes.sunset);
+  // Update slider track gradient based on sun times
+  const range = 24 - 5;
+  const sunrisePct = ((sunTimes.dawn - 5) / range * 100).toFixed(0);
+  const sunsetPct = ((sunTimes.sunset - 5) / range * 100).toFixed(0);
+  const duskPct = ((sunTimes.dusk - 5) / range * 100).toFixed(0);
+  const track = document.getElementById('time-slider-track');
+  track.style.background = `linear-gradient(to right, #0f172a 0%, #1e3a5f ${sunrisePct}%, #fbbf24 ${(+sunrisePct + 8)}%, #fef3c7 35%, #fef3c7 ${sunsetPct}%, #f59e0b ${sunsetPct}%, #1e3a5f ${duskPct}%, #0f172a 100%)`;
+  // Update sunset tick label
+  const sunsetTick = document.getElementById('sunset-tick');
+  if (sunsetTick) sunsetTick.textContent = formatHour(sunTimes.sunset);
+  // Daylight hours
+  const daylight = (sunTimes.sunset - sunTimes.sunrise).toFixed(1);
+  document.getElementById('sun-info').textContent +=
+    '  ·  ' + daylight + 'h daylight';
+}
+
+const COASTLINE = [
+  [-117.190, 32.728], [-117.178, 32.718], [-117.174, 32.710],
+  [-117.172, 32.707], [-117.168, 32.705], [-117.163, 32.704],
+  [-117.158, 32.704], [-117.153, 32.706], [-117.148, 32.708],
+  [-117.140, 32.712], [-117.130, 32.710],
+  [-117.130, 32.690], [-117.190, 32.690], [-117.190, 32.728]
+];
+
+const ROUTE_CONTEXT = {
+  'Santa Fe Depot to Petco Park': {
+    type: 'Transit → Event',
+    who: 'A commuter arriving by train and walking to the baseball stadium',
+    tip: 'The main waterfront road is better lit than cutting through the residential blocks to the east.'
+  },
+  'Gaslamp to Convention Center': {
+    type: 'Nightlife → Conference',
+    who: 'A visitor walking from the entertainment district to the convention center',
+    tip: 'Counterintuitively, this corridor is safer at night (61) than during the day (55) because crowds fill the streets.'
+  },
+  'Little Italy to Seaport Village': {
+    type: 'Dining → Waterfront',
+    who: 'A tourist walking from the restaurant district to the waterfront shops',
+    tip: 'The safest corridor in downtown at any hour. A good default if you are unsure.'
+  },
+  'East Village to 12th & Imperial': {
+    type: 'Residential → Transit',
+    who: 'A resident walking from their apartment to the main transit hub',
+    tip: 'Score improves at night (68 to 72). Stick to the main streets near the transit center.'
+  },
+  'Hillcrest to Balboa Park': {
+    type: 'Neighborhood → Park',
+    who: 'A resident walking from their neighborhood to the city\'s largest park',
+    tip: 'Safer at night (59 to 66) because the main avenue has more foot traffic after dark.'
+  }
+};
+
+function getQualLabel(score) {
+  if (score >= 0.8) return 'Low Risk';
+  if (score >= 0.6) return 'Moderate';
+  if (score >= 0.4) return 'Elevated';
+  return 'High Risk';
+}
+
+/* ═══ GRAPH + PATHFINDING ═══ */
+
+function buildGraph(edges) {
+  const nodeMap = new Map();
+  const nodes = [];
+  const adj = [];
+  function nodeIdx(coords) {
+    const key = coords[0].toFixed(5) + ',' + coords[1].toFixed(5);
+    if (!nodeMap.has(key)) {
+      nodeMap.set(key, nodes.length);
+      nodes.push(coords);
+      adj.push([]);
     }
+    return nodeMap.get(key);
+  }
+  edges.forEach(e => {
+    const from = nodeIdx(e.from);
+    const to = nodeIdx(e.to);
+    adj[from].push({ to, score_day: e.score_day, score_night: e.score_night, length: e.length });
+    adj[to].push({ to: from, score_day: e.score_day, score_night: e.score_night, length: e.length });
   });
+  return { nodes, adj, nodeMap };
 }
 
-map.on("load", loadRoutes);
-
-
-function getOverall(d) {
-  const crime = timeOfDay === "day" ? d.crimeDay : d.crimeNight;
-  return Math.round((crime * 0.4) + (d.infra * 0.35) + (d.walk * 0.25));
-}
-
-function updateBreakdown() {
-  const crime = timeOfDay === "day" ? selectedRoute.crimeDay : selectedRoute.crimeNight;
-  const overall = getOverall(selectedRoute);
-
-  const metrics = [
-    { label: "Crime Safety", value: crime, color: "#ef4444", risk: crime > 75 ? "Low Risk" : crime > 55 ? "Moderate" : "Elevated" },
-    { label: "Infrastructure (lighting + road class)", value: selectedRoute.infra, color: "#f59e0b", risk: "Low Risk" },
-    { label: "Walkability (EPA index)", value: selectedRoute.walk, color: "#3b82f6", risk: "Elevated" },
-    { label: `Overall (${timeOfDay})`, value: overall, color: "#263247", risk: overall > 75 ? "Low Risk" : overall > 55 ? "Moderate" : "Elevated" }
-  ];
-
-  d3.select("#breakdown")
-    .html(metrics.map(m => `
-      <div class="metric">
-        <div class="metric-header">
-          <span>${m.label}</span>
-          <span>${m.value}</span>
-        </div>
-        <div class="bar-bg">
-          <div class="bar-fill" style="width:${m.value}%; background:${m.color};"></div>
-        </div>
-        <div class="risk-label">${m.risk}</div>
-      </div>
-    `).join(""));
-}
-
-function drawChart() {
-  const container = d3.select("#comparison-chart");
-  container.selectAll("*").remove();
-
-  const margin = { top: 28, right: 40, bottom: 80, left: 50 };
-  const width = container.node().clientWidth;
-  const height = 340;
-
-  const categories = ["Crime (Day)", "Crime (Night)", "Infrastructure", "Walkability"];
-
-  const data = [];
-  routes.forEach(route => {
-    data.push({ category: "Crime (Day)", route: route.short, value: route.crimeDay, color: route.color, full: route.name });
-    data.push({ category: "Crime (Night)", route: route.short, value: route.crimeNight, color: route.color, full: route.name });
-    data.push({ category: "Infrastructure", route: route.short, value: route.infra, color: route.color, full: route.name });
-    data.push({ category: "Walkability", route: route.short, value: route.walk, color: route.color, full: route.name });
+function findNearestNode(lngLat) {
+  let best = 0, bestD = Infinity;
+  graph.nodes.forEach((n, i) => {
+    const d = (n[0] - lngLat[0]) ** 2 + (n[1] - lngLat[1]) ** 2;
+    if (d < bestD) { bestD = d; best = i; }
   });
-
-  const svg = container.append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-  const x0 = d3.scaleBand()
-    .domain(categories)
-    .range([margin.left, width - margin.right])
-    .paddingInner(0.25);
-
-  const x1 = d3.scaleBand()
-    .domain(routes.map(d => d.short))
-    .range([0, x0.bandwidth()])
-    .padding(0.08);
-
-  const y = d3.scaleLinear()
-    .domain([0, 100])
-    .range([height - margin.bottom, margin.top]);
-
-  svg.append("g")
-    .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y));
-
-  svg.append("text")
-    .attr("x", margin.left - 38)
-    .attr("y", margin.top - 8)
-    .attr("font-size", 11)
-    .text("Score");
-
-  svg.append("g")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x0));
-
-  svg.selectAll("rect")
-    .data(data)
-    .join("rect")
-    .attr("x", d => x0(d.category) + x1(d.route))
-    .attr("y", d => y(d.value))
-    .attr("width", x1.bandwidth())
-    .attr("height", d => y(0) - y(d.value))
-    .attr("fill", d => d.color)
-    .attr("opacity", d => d.full === selectedRoute.name ? 0.9 : 0.25);
-
-  svg.append("text")
-    .attr("x", x0("Crime (Day)") + 85)
-    .attr("y", y(88))
-    .attr("font-size", 11)
-    .attr("fill", "red")
-    .text("39-pt spread across routes");
-
-  const legend = svg.append("g")
-    .attr("transform", `translate(${margin.left},${height - 35})`);
-
-  routes.forEach((route, i) => {
-    const g = legend.append("g")
-      .attr("transform", `translate(${i * 190},0)`);
-
-    g.append("rect")
-      .attr("width", 10)
-      .attr("height", 10)
-      .attr("fill", route.color);
-
-    g.append("text")
-      .attr("x", 14)
-      .attr("y", 9)
-      .attr("font-size", 11)
-      .text(route.short);
-  });
+  return best;
 }
 
-// Placeholder functions for scrollytelling steps --> guide audience through the story with narrative text and map layers
-function showOnlyRoutes() {
-  console.log("Show only route distance");
-}
-
-function showCrimeLayer() {
-  console.log("Show crime incidents");
-}
-
-function showPedestrianLayer() {
-  console.log("Show pedestrian density");
-}
-
-function showLightingLayer() {
-  console.log("Show lighting");
-}
-
-function showFinalComparison() {
-  console.log("Show final route comparison");
-}
-
-function setTimeOfDay(time) {
-  timeOfDay = time;
-
-  d3.select("#day-btn").classed("active", timeOfDay === "day");
-  d3.select("#night-btn").classed("active", timeOfDay === "night");
-}
-
-
-function updateScrollyStep(step) {
-  if (step === 0) {
-    activeLayer = "distance";
-    setTimeOfDay("day");
-  }
-
-  if (step === 1) {
-    activeLayer = "crime";
-  }
-
-  if (step === 2) {
-    activeLayer = "infra";
-  }
-
-  if (step === 3) {
-    activeLayer = "walk";
-    setTimeOfDay("night");
-  }
-
-  if (step === 4) {
-    activeLayer = "all";
-  }
-
-  update();
-}
-
-
-function updateScoreProgress() {
-  let score = 50;
-  let explanation = "Base route score using distance only.";
-
-  const crime = timeOfDay === "day"
-    ? selectedRoute.crimeDay
-    : selectedRoute.crimeNight;
-
-  if (activeLayer === "crime") {
-    score = Math.round((50 * 0.6) + (crime * 0.4));
-
-    explanation = "Crime density changes the route safety score.";
-  }
-
-  if (activeLayer === "infra") {
-    score = Math.round(
-      (crime * 0.4) +
-      (selectedRoute.infra * 0.35) +
-      (50 * 0.25)
-    );
-
-    explanation = "Infrastructure and lighting improve safety.";
-  }
-
-  if (activeLayer === "walk" || activeLayer === "all") {
-    score = getOverall(selectedRoute);
-
-    explanation = "Walkability and pedestrian activity complete the final score.";
-  }
-
-  d3.select("#score-number")
-    .text(score);
-
-  d3.select("#score-bar-fill")
-    .style("width", `${score}%`);
-
-  d3.select("#score-explanation")
-    .text(explanation);
-}
-
-const scroller = scrollama();
-
-scroller
-  .setup({
-    container: "#scrolly-1",
-    step: "#scrolly-1 .step",
-    offset: 0.6,
-    debug: false
-  })
-
-  .onStepEnter(response => {
-    const step = +response.element.dataset.step;
-
-    d3.selectAll(".step").classed("active", false);
-    d3.select(response.element).classed("active", true);
-
-    updateScrollyStep(step);
-  })
-
-  .onStepExit(response => {
-    if (response.direction === "up") {
-      const step = +response.element.dataset.step - 1;
-
-      if (step >= 0) {
-        updateScrollyStep(step);
-
-        d3.selectAll(".step").classed("active", false);
-
-        d3.select(`.step[data-step="${step}"]`)
-          .classed("active", true);
+// Cost: edge_length * (1 + multiplier * (1 - score))
+// multiplier=0 → fastest, multiplier=0.5 → balanced, multiplier=1.0 → extra caution
+function dijkstraRoute(startIdx, endIdx, multiplier) {
+  const n = graph.nodes.length;
+  const dist = new Float64Array(n).fill(Infinity);
+  const prev = new Int32Array(n).fill(-1);
+  const visited = new Uint8Array(n);
+  dist[startIdx] = 0;
+  const pq = [[0, startIdx]];
+  const scoreKey = state.timeOfDay === 'day' ? 'score_day' : 'score_night';
+  while (pq.length) {
+    let minI = 0;
+    for (let i = 1; i < pq.length; i++) { if (pq[i][0] < pq[minI][0]) minI = i; }
+    const [d, u] = pq.splice(minI, 1)[0];
+    if (visited[u]) continue;
+    visited[u] = 1;
+    if (u === endIdx) break;
+    for (const edge of graph.adj[u]) {
+      if (visited[edge.to]) continue;
+      const score = edge[scoreKey];
+      const w = edge.length * (1 + multiplier * (1 - score));
+      const nd = dist[u] + w;
+      if (nd < dist[edge.to]) {
+        dist[edge.to] = nd;
+        prev[edge.to] = u;
+        pq.push([nd, edge.to]);
       }
     }
-  });
+  }
+  const path = [];
+  let cur = endIdx;
+  while (cur !== -1) { path.unshift(graph.nodes[cur]); cur = prev[cur]; }
+  if (path.length < 2 || path[0][0] !== graph.nodes[startIdx][0]) return null;
 
-window.addEventListener("resize", scroller.resize);
-
-function update() {
-  d3.selectAll(".route-option")
-    .classed("active", d => d.name === selectedRoute.name);
-
-  updateBreakdown();
-  drawChart();
-  updateScoreProgress();
+  let totalLen = 0, weightedScore = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const k1 = path[i][0].toFixed(5) + ',' + path[i][1].toFixed(5);
+    const k2 = path[i + 1][0].toFixed(5) + ',' + path[i + 1][1].toFixed(5);
+    const idx1 = graph.nodeMap.get(k1);
+    const edge = graph.adj[idx1].find(e => e.to === graph.nodeMap.get(k2));
+    if (edge) { totalLen += edge.length; weightedScore += edge[scoreKey] * edge.length; }
+  }
+  const avgScore = totalLen > 0 ? weightedScore / totalLen : 0;
+  return { path, avgScore, totalLen };
 }
 
-update();
+async function init() {
+  if (location.protocol === 'file:') {
+    document.querySelector('.sticky-container').innerHTML = '<p style="padding:40px;color:#e53e3e;">This page must be served via HTTP.<br><br>Open a terminal in this folder and run:<br><code style="background:#f1f1f1;padding:4px 8px;border-radius:4px;">python3 -m http.server 8080</code><br><br>Then open <a href="http://localhost:8080">http://localhost:8080</a></p>';
+    return;
+  }
+  try {
+    data = await d3.json('downtown_sd.json?t=' + Date.now());
+  } catch (e) {
+    document.querySelector('.sticky-container').innerHTML = '<p style="padding:40px;color:#e53e3e;">Failed to load data: ' + e.message + '</p>';
+    return;
+  }
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
+
+  graph = buildGraph(data.edges);
+  drawScrollMap(colorScale);
+  drawExploreMap(colorScale);
+  buildRouteList();
+  buildExploreToggles();
+  setupModeTabs();
+  setupTimeSlider();
+  setupNavigateMode();
+  drawComparisonChart();
+  updateScorePanel();
+  updateRecommendation();
+  updateRouteContext();
+  setupScrollObserver();
+  setupScrollTimeToggle();
+  buildLegend();
+  buildSceneProgress();
+  setScene(1);
+  const loadEl = document.getElementById('loading-overlay');
+  if (loadEl) loadEl.style.transition = 'opacity 0.5s';
+  if (loadEl) { loadEl.style.opacity = 0; setTimeout(() => loadEl.remove(), 500); }
+}
+
+/* ═══════════════════════════════════════════════════
+   SCROLLY MAP (narrative, read-only scenes 1-8)
+   ═══════════════════════════════════════════════════ */
+
+function drawScrollMap(colorScale) {
+  const svg = d3.select('#map-svg');
+  const container = svg.node().parentElement;
+  const width = 800;
+  const height = 760;
+  svg.attr('viewBox', `0 0 ${width} ${height}`).attr('preserveAspectRatio', 'xMidYMid meet');
+
+  const b = data.bounds;
+  const geoFeature = { type: "Feature", geometry: { type: "MultiPoint", coordinates: [[b.lng[0], b.lat[0]], [b.lng[1], b.lat[0]], [b.lng[1], b.lat[1]], [b.lng[0], b.lat[1]]] }};
+  scrollProjection = d3.geoMercator().fitExtent([[30, 20], [width - 30, height - 40]], geoFeature);
+
+  // Water / San Diego Bay
+  const scrollWater = COASTLINE.map(c => scrollProjection(c));
+  svg.append('polygon')
+    .attr('points', scrollWater.map(p => p.join(',')).join(' '))
+    .attr('fill', '#bfdbfe').attr('id', 'scroll-water');
+  const scrollBay = scrollProjection([-117.165, 32.698]);
+  svg.append('text').attr('x', scrollBay[0]).attr('y', scrollBay[1])
+    .text('San Diego Bay').attr('font-size', '15px').attr('fill', '#3b82f6')
+    .attr('font-weight', '500').attr('text-anchor', 'middle').attr('font-style', 'italic')
+    .attr('opacity', 0.4).style('pointer-events', 'none');
+
+  // Clip to land only
+  const scrollCoast = COASTLINE.slice(0, 11).map(c => scrollProjection(c));
+  const scrollLand = [[0,0],[width,0],[width,height], ...scrollCoast.reverse(), [0,height]];
+  const scrollDefs = svg.append('defs');
+  scrollDefs.append('clipPath').attr('id', 'scroll-land-clip')
+    .append('polygon').attr('points', scrollLand.map(p => p.join(',')).join(' '));
+
+  // Edge layer
+  svg.append('g').attr('id', 'scroll-edges').attr('clip-path', 'url(#scroll-land-clip)')
+    .selectAll('line').data(data.edges).join('line')
+    .attr('x1', d => scrollProjection(d.from)[0])
+    .attr('y1', d => scrollProjection(d.from)[1])
+    .attr('x2', d => scrollProjection(d.to)[0])
+    .attr('y2', d => scrollProjection(d.to)[1])
+    .attr('stroke', '#999')
+    .attr('stroke-width', 2.5)
+    .attr('stroke-opacity', 0)
+    .attr('class', 'edge-line')
+    .style('pointer-events', 'visibleStroke')
+    .on('mouseenter', function(event, d) {
+      if (state.currentScene < 5) return;
+      const scoreKey = (state.currentScene === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
+      const score = d[scoreKey];
+      const s = Math.round(score * 100);
+      const midLng = (d.from[0] + d.to[0]) / 2, midLat = (d.from[1] + d.to[1]) / 2;
+      const hoods = [
+        { name: 'Little Italy', lng: -117.172, lat: 32.725 },
+        { name: 'Gaslamp', lng: -117.162, lat: 32.711 },
+        { name: 'East Village', lng: -117.148, lat: 32.715 },
+        { name: 'Marina', lng: -117.172, lat: 32.709 },
+        { name: 'Cortez Hill', lng: -117.165, lat: 32.723 },
+        { name: 'Conv. Ctr', lng: -117.158, lat: 32.704 }
+      ];
+      let nearest = hoods[0], minD = Infinity;
+      hoods.forEach(h => { const dd = (h.lng - midLng)**2 + (h.lat - midLat)**2; if (dd < minD) { minD = dd; nearest = h; } });
+      const container = svg.node().parentElement;
+      const [mx, my] = d3.pointer(event, container);
+      d3.select('#tooltip').style('opacity', 1)
+        .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
+        .html(`<strong>${nearest.name}: ${s}/100</strong> ${getQualLabel(score)}`);
+      d3.select(this).attr('stroke-width', 5);
+    })
+    .on('mouseleave', function() {
+      d3.select('#tooltip').style('opacity', 0);
+      d3.select(this).attr('stroke-width', null);
+    });
+
+  // Streetlight layer
+  svg.append('g').attr('id', 'scroll-lights').attr('clip-path', 'url(#scroll-land-clip)');
+
+  // Crime layer
+  svg.append('g').attr('id', 'scroll-crime').attr('clip-path', 'url(#scroll-land-clip)');
+
+  // Route layer
+  const routeLayer = svg.append('g').attr('id', 'scroll-routes');
+  const line = d3.line().x(d => scrollProjection(d)[0]).y(d => scrollProjection(d)[1]).curve(d3.curveLinear);
+  const routeNames = Object.keys(data.routes);
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    routeLayer.append('path')
+      .datum(route.waypoints)
+      .attr('d', line)
+      .attr('fill', 'none')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 0)
+      .attr('stroke-linecap', 'round')
+      .attr('class', 'scroll-route-halo')
+      .attr('data-index', i);
+    routeLayer.append('path')
+      .datum(route.waypoints)
+      .attr('d', line)
+      .attr('fill', 'none')
+      .attr('stroke', route.color)
+      .attr('stroke-width', 3.5)
+      .attr('stroke-opacity', 0.5)
+      .attr('stroke-linecap', 'round')
+      .attr('class', 'scroll-route-path')
+      .attr('data-index', i)
+      .on('mouseenter', function(event) {
+        if (state.currentScene < 6) return;
+        const score = route.scores[state.timeOfDay];
+        const [mx, my] = d3.pointer(event, container);
+        d3.select('#tooltip').style('opacity', 1)
+          .style('left', (mx + 12) + 'px').style('top', (my - 40) + 'px')
+          .html(`<strong>${name}</strong><br>Safety: ${Math.round(score * 100)}/100 (${getQualLabel(score)})`);
+      })
+      .on('mouseleave', () => d3.select('#tooltip').style('opacity', 0));
+  });
+
+  // Route labels (appear scene 6+)
+  const routeLabelLayer = svg.append('g').attr('id', 'scroll-route-labels').style('opacity', 0);
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    const mid = route.waypoints[Math.floor(route.waypoints.length / 2)];
+    const [x, y] = scrollProjection(mid);
+    const score = Math.round(route.scores.day * 100);
+    const short = name.split(' to ')[0];
+    routeLabelLayer.append('text').attr('x', x).attr('y', y - 8)
+      .text(short + ': ' + score)
+      .attr('font-size', '11px').attr('font-weight', '600').attr('fill', route.color)
+      .attr('stroke', '#fff').attr('stroke-width', 3).attr('paint-order', 'stroke')
+      .attr('text-anchor', 'middle').attr('class', 'scroll-route-label').attr('data-index', i)
+      .style('pointer-events', 'none');
+  });
+
+  // Annotation layer
+  svg.append('g').attr('id', 'scroll-annotations');
+
+  // Location inset — real California outline via TopoJSON
+  const inset = svg.append('g').attr('transform', 'translate(680, 12)').attr('id', 'ca-inset');
+  inset.append('rect').attr('x', -5).attr('y', -5).attr('width', 110).attr('height', 120).attr('rx', 6)
+    .attr('fill', '#fff').attr('stroke', '#ddd').attr('opacity', 0.92);
+  // Fetch real US states geometry
+  d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(us => {
+    const states = topojson.feature(us, us.objects.states);
+    const california = states.features.find(f => f.properties.name === 'California');
+    // Fit California into the inset box
+    const insetProj = d3.geoMercator().fitExtent([[4, 4], [60, 100]], california);
+    const insetPath = d3.geoPath().projection(insetProj);
+    // Draw all US states faintly for context
+    inset.selectAll('.us-state').data(states.features).join('path')
+      .attr('d', insetPath).attr('fill', '#e8eaed').attr('stroke', '#ccc').attr('stroke-width', 0.3);
+    // Highlight California
+    inset.append('path').datum(california).attr('d', insetPath)
+      .attr('fill', '#D97706').attr('fill-opacity', 0.2).attr('stroke', '#D97706').attr('stroke-width', 1.2);
+    // San Diego dot at real coordinates
+    const sdCoords = insetProj([-117.16, 32.72]);
+    inset.append('circle').attr('cx', sdCoords[0]).attr('cy', sdCoords[1]).attr('r', 3.5)
+      .attr('fill', '#D97706').attr('stroke', '#fff').attr('stroke-width', 1.5);
+    // Labels
+    inset.append('text').attr('x', 55).attr('y', 68)
+      .text('San Diego').attr('font-size', '10px').attr('fill', '#333')
+      .attr('text-anchor', 'start').attr('font-weight', '700');
+    inset.append('text').attr('x', 55).attr('y', 79)
+      .text('California, USA').attr('font-size', '9px').attr('fill', '#888')
+      .attr('text-anchor', 'start');
+    // Connector line from dot to label
+    inset.append('line').attr('x1', sdCoords[0] + 4).attr('y1', sdCoords[1])
+      .attr('x2', 53).attr('y2', 64)
+      .attr('stroke', '#D97706').attr('stroke-width', 1).attr('stroke-dasharray', '2,2');
+  });
+
+  // Neighborhood labels
+  const labels = svg.append('g').attr('id', 'scroll-labels');
+  [
+    { name: 'Little Italy', coords: [-117.1740, 32.7260], anchor: 'end' },
+    { name: 'Gaslamp', coords: [-117.1620, 32.7100], anchor: 'end' },
+    { name: 'East Village', coords: [-117.1460, 32.7160], anchor: 'start' },
+    { name: 'Hillcrest', coords: [-117.1650, 32.7480], anchor: 'end' },
+    { name: 'Balboa Park', coords: [-117.1440, 32.7340], anchor: 'start' }
+  ].forEach(n => {
+    const [x, y] = scrollProjection(n.coords);
+    labels.append('text').attr('x', x).attr('y', y)
+      .text(n.name).attr('font-size', '12px').attr('fill', '#222')
+      .attr('text-anchor', n.anchor).attr('font-weight', '600')
+      .attr('stroke', '#fff').attr('stroke-width', 4).attr('paint-order', 'stroke')
+      .style('pointer-events', 'none');
+  });
+}
+
+/* ── Scene transitions ── */
+
+function setScene(n) {
+  const prevScene = state.currentScene;
+  state.currentScene = n;
+  const svg = d3.select('#map-svg');
+  const nightShift = n === 7 && state.timeOfDay === 'night';
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t))
+    .domain(nightShift ? [0.0, 0.4, 1.0] : [0.0, 0.5, 1.0]);
+  const routeNames = Object.keys(data.routes);
+  const t = d3.transition().duration(600);
+
+  // Night-mode background
+  const isNight = n === 7 && state.timeOfDay === 'night';
+  document.querySelector('.sticky-container').classList.toggle('night-mode', isNight);
+  d3.select('#scroll-water').transition(t).attr('fill', isNight ? '#0c4a6e' : '#bfdbfe');
+
+  // Formula overlay
+  d3.select('#formula-overlay').classed('visible', n === 2);
+
+  // Color scale legend — show from scene 3 onward when edges have color
+  const colorLegend = document.getElementById('scroll-color-legend');
+  colorLegend.style.opacity = n >= 3 ? '1' : '0';
+  if (isNight) { colorLegend.style.background = 'rgba(26,32,44,0.9)'; colorLegend.style.color = '#94a3b8'; }
+  else { colorLegend.style.background = 'rgba(255,255,255,0.92)'; colorLegend.style.color = '#555'; }
+
+  // Map subtitle
+  const labels = [
+    '', '5,500 street segments in downtown San Diego',
+    'Three datasets combine into one safety score',
+    'Walkability is uniform. It does not explain the gap.',
+    'Lighting has gaps, but not enough to explain 18 points',
+    'Crime density fractures the map',
+    'The safest route scores 73. The worst scores 55.',
+    n === 7 && state.timeOfDay === 'night' ? 'Some routes get safer at night' : 'Safety shifts between day and night',
+    'Route choice is a safety decision'
+  ];
+  d3.select('#map-label').text(labels[n] || '');
+
+  // Edges — color arc: gray → blue → blue w/ gaps → RED/BLUE fracture
+  if (n === 1) {
+    svg.selectAll('.edge-line')
+      .transition().delay((d, i) => i * 0.3).duration(500)
+      .attr('stroke', '#999').attr('stroke-opacity', 0.6);
+  } else if (n === 2) {
+    svg.selectAll('.edge-line').transition(t)
+      .attr('stroke', '#999').attr('stroke-opacity', 0.15);
+  } else if (n === 3) {
+    svg.selectAll('.edge-line')
+      .transition().duration(300).attr('stroke-opacity', 0.9)
+      .transition().duration(600)
+      .attr('stroke', colorScale(0.85))
+      .attr('stroke-opacity', 0.7);
+  } else if (n === 4) {
+    svg.selectAll('.edge-line').transition(t)
+      .attr('stroke', d => {
+        const v = 0.50 + (d.score_day - 0.19) / (1.0 - 0.19) * 0.42;
+        return colorScale(Math.min(v, 0.92));
+      })
+      .attr('stroke-opacity', 0.7);
+  } else if (n === 5 && prevScene !== 5) {
+    // Crime reveal: brief flash then fracture
+    svg.selectAll('.edge-line')
+      .transition().duration(200).attr('stroke-opacity', 0.3)
+      .transition().duration(800)
+      .attr('stroke', d => colorScale(d.score_day))
+      .attr('stroke-opacity', 0.85)
+      .attr('stroke-width', 3);
+  } else {
+    const timeKey = (n === 7 && state.timeOfDay === 'night') ? 'score_night' : 'score_day';
+    svg.selectAll('.edge-line').transition(t)
+      .attr('stroke', d => colorScale(d[timeKey]))
+      .attr('stroke-width', isNight ? 3.5 : 2.5)
+      .attr('stroke-opacity', 0.75);
+  }
+
+  // Streetlights — scene 4 cascade + scene 7 night glow with twinkling
+  const showLights = (n === 4) || (n === 7 && state.timeOfDay === 'night');
+  const scrollLightData = showLights && data.streetlights ? data.streetlights : [];
+  const isNightScene = n === 7 && state.timeOfDay === 'night';
+  const scrollLightGroup = svg.select('#scroll-lights');
+  const scrollLightSel = scrollLightGroup.selectAll('.light-unit').data(scrollLightData, (d, i) => i);
+  const scrollLightEnter = scrollLightSel.enter().append('g').attr('class', 'light-unit')
+    .attr('transform', d => `translate(${scrollProjection(d)[0]},${scrollProjection(d)[1]})`)
+    .style('opacity', 0);
+  scrollLightEnter.append('circle').attr('class', 'light-halo');
+  scrollLightEnter.append('circle').attr('class', 'light-core');
+  scrollLightSel.exit().transition(t).style('opacity', 0).remove();
+  const scrollHaloR = isNightScene ? 6 : 4;
+  const scrollHaloOp = isNightScene ? 0.2 : 0.1;
+  const scrollLightAll = scrollLightGroup.selectAll('.light-unit');
+  scrollLightAll.each(function(d, i) {
+    const g = d3.select(this);
+    const dur = (2 + Math.random() * 3).toFixed(1) + 's';
+    const delay = (Math.random() * 3).toFixed(1) + 's';
+    g.select('.light-halo')
+      .attr('r', scrollHaloR)
+      .attr('fill', isNightScene ? '#e0e7ff' : '#94a3b8')
+      .attr('opacity', scrollHaloOp)
+      .classed('twinkling', isNightScene)
+      .style('--halo-r', scrollHaloR)
+      .style('--halo-base', scrollHaloOp)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', isNightScene ? delay : null);
+    g.select('.light-core')
+      .attr('r', isNightScene ? 2.5 : 1.8)
+      .attr('fill', isNightScene ? '#fff' : '#64748b')
+      .attr('opacity', isNightScene ? 1 : 0.6)
+      .classed('twinkling', isNightScene)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', isNightScene ? delay : null);
+  });
+  scrollLightAll.transition().delay((d, i) => i * 1.5).duration(400).style('opacity', 1);
+
+  // Crime
+  const showCrime = (n === 5) || (n === 7);
+  const nightCrime = n === 7 && state.timeOfDay === 'night';
+  const crimeData = showCrime && data.crime
+    ? data.crime.filter(c => nightCrime ? (c.hour >= 18 || c.hour < 6) : (c.hour >= 6 && c.hour < 18))
+    : [];
+  svg.select('#scroll-crime').selectAll('circle')
+    .data(crimeData, (d, i) => i)
+    .join(
+      enter => enter.append('circle')
+        .attr('cx', d => scrollProjection(d.coords)[0]).attr('cy', d => scrollProjection(d.coords)[1])
+        .attr('r', 0).attr('fill', '#e8590c').attr('opacity', 0),
+      update => update,
+      exit => exit.transition(t).attr('r', 0).attr('opacity', 0).remove()
+    )
+    .transition().delay((d, i) => i * 2).duration(300)
+    .attr('r', 4).attr('opacity', 0.5)
+    .transition().duration(200).attr('r', 3).attr('opacity', 0.4);
+
+  // Routes
+  svg.selectAll('.scroll-route-path').transition(t)
+    .attr('stroke-opacity', n >= 6 ? (function() { return +d3.select(this).attr('data-index') === 0 ? 1 : 0.35; }) : 0.5)
+    .attr('stroke-width', n >= 6 ? (function() { return +d3.select(this).attr('data-index') === 0 ? 7 : 3; }) : 3.5);
+  svg.selectAll('.scroll-route-halo').transition(t)
+    .attr('stroke-width', n >= 6 ? (function() { return +d3.select(this).attr('data-index') === 0 ? 12 : 0; }) : 0);
+
+  // Route labels
+  svg.select('#scroll-route-labels').transition(t).style('opacity', n >= 6 ? 1 : 0);
+  if (n >= 6) {
+    const timeKey = (n === 7 && state.timeOfDay === 'night') ? 'night' : 'day';
+    svg.selectAll('.scroll-route-label').each(function() {
+      const el = d3.select(this);
+      const idx = +el.attr('data-index');
+      const rName = Object.keys(data.routes)[idx];
+      const score = Math.round(data.routes[rName].scores[timeKey] * 100);
+      const short = rName.split(' to ')[0];
+      el.text(short + ': ' + score);
+      el.attr('fill', isNight ? '#e2e8f0' : data.routes[rName].color);
+      el.attr('stroke', isNight ? '#1a202c' : '#fff');
+    });
+  }
+
+  // Annotations
+  updateScrollAnnotations(n);
+
+  // Legend update
+  updateLegendForScene(n);
+
+  // Night-mode label colors
+  svg.select('#scroll-labels').selectAll('text').transition(t)
+    .attr('fill', isNight ? '#e2e8f0' : '#222')
+    .attr('stroke', isNight ? '#1a202c' : '#fff');
+
+  // Time indicator on scene 7
+  svg.selectAll('.time-indicator').remove();
+  if (n === 7) {
+    const icon = isNight ? '☾' : '☀';
+    const color = isNight ? '#e0e7ff' : '#94a3b8';
+    svg.append('text').attr('class', 'time-indicator')
+      .attr('x', 50).attr('y', 60).text(icon)
+      .attr('font-size', '32px').attr('fill', color)
+      .style('pointer-events', 'none').style('opacity', 0)
+      .transition().duration(400).style('opacity', 0.6);
+  }
+}
+
+function addAnnotation(layer, coords, text, color) {
+  const [x, y] = scrollProjection(coords);
+  const g = layer.append('g').style('opacity', 0);
+  const txt = g.append('text').attr('x', x).attr('y', y)
+    .text(text).attr('font-size', '16px').attr('fill', '#fff').attr('font-weight', '700')
+    .style('pointer-events', 'none');
+  const bbox = txt.node().getBBox();
+  const px = 10, py = 7;
+  g.insert('rect', 'text')
+    .attr('x', bbox.x - px).attr('y', bbox.y - py)
+    .attr('width', bbox.width + px * 2).attr('height', bbox.height + py * 2)
+    .attr('rx', 6).attr('fill', color)
+    .style('filter', 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))');
+  g.transition().duration(400).style('opacity', 1);
+}
+
+function updateScrollAnnotations(n) {
+  const svg = d3.select('#map-svg');
+  const layer = svg.select('#scroll-annotations');
+  layer.selectAll('*').remove();
+
+  if (n === 4) {
+    addAnnotation(layer, [-117.148, 32.711], 'East Village: gaps in lighting', '#92400e');
+    addAnnotation(layer, [-117.172, 32.724], 'Little Italy: well-lit corridors', '#1e40af');
+  }
+
+  if (n === 5) {
+    addAnnotation(layer, [-117.148, 32.720], 'East Village: 207 incidents', '#c2410c');
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy: 63 incidents', '#1e40af');
+  }
+
+  if (n === 6) {
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1e40af');
+    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#c2410c');
+  }
+
+  if (n === 7) {
+    const isNight = state.timeOfDay === 'night';
+    if (isNight) {
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: 61 at night (+6)', '#2563eb');
+      addAnnotation(layer, [-117.148, 32.720], 'East Village: riskier after dark', '#D97706');
+      addAnnotation(layer, [-117.178, 32.732], 'Little Italy: 72, stable', '#2563eb');
+    } else {
+      addAnnotation(layer, [-117.178, 32.732], 'Little Italy corridor: 73 (Low Risk)', '#1d4ed8');
+      addAnnotation(layer, [-117.158, 32.697], 'Gaslamp corridor: 55 (Elevated)', '#D97706');
+    }
+  }
+
+  if (n === 8) {
+    addAnnotation(layer, [-117.178, 32.732], 'Little Italy: safest any time of day', '#1e40af');
+    addAnnotation(layer, [-117.158, 32.697], 'Gaslamp: +6 at night', '#2563eb');
+  }
+}
+
+function updateLegendForScene(n) {
+  const items = d3.selectAll('#legend .legend-item');
+  items.each(function() {
+    const item = d3.select(this);
+    const layer = item.attr('data-layer');
+    let show = false;
+    if (layer === 'edges') show = n >= 3;
+    else if (layer === 'lights') show = n === 4;
+    else if (layer === 'crime') show = n === 5;
+    item.style('opacity', show ? 1 : 0.25);
+  });
+}
+
+function buildLegend() {
+  const legend = d3.select('#legend');
+  legend.html('');
+  [
+    { type: 'line', color: '#e8590c', label: 'Dangerous', layer: 'edges' },
+    { type: 'line', color: '#2166ac', label: 'Safe', layer: 'edges' },
+    { type: 'dot', color: '#94a3b8', label: 'Streetlight', layer: 'lights' },
+    { type: 'dot', color: '#e8590c', label: 'Crime incident', layer: 'crime' }
+  ].forEach(d => {
+    const item = legend.append('div').attr('class', 'legend-item').attr('data-layer', d.layer);
+    item.append('div').attr('class', d.type === 'line' ? 'legend-line' : 'legend-dot').style('background', d.color);
+    item.append('span').text(d.label);
+  });
+}
+
+function buildSceneProgress() {
+  const container = document.getElementById('scene-progress');
+  for (let i = 1; i <= 8; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'scene-dot' + (i === 1 ? ' active' : '');
+    dot.setAttribute('data-scene', i);
+    dot.addEventListener('click', () => {
+      const target = document.querySelector(`.step[data-scene="${i}"]`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    container.appendChild(dot);
+  }
+  const scrolly = document.getElementById('scrolly');
+  const cue = document.getElementById('scroll-cue');
+  const progressObs = new IntersectionObserver(([entry]) => {
+    container.classList.toggle('visible', entry.isIntersecting);
+    if (!entry.isIntersecting) cue.classList.add('hidden');
+  }, { threshold: 0.05 });
+  progressObs.observe(scrolly);
+}
+
+function updateSceneDots(n) {
+  document.querySelectorAll('.scene-dot').forEach(dot => {
+    dot.classList.toggle('active', +dot.getAttribute('data-scene') <= n);
+  });
+}
+
+/* ── Scroll observer ── */
+
+function setupScrollObserver() {
+  const steps = document.querySelectorAll('.step');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        document.getElementById('scroll-cue').classList.add('hidden');
+        steps.forEach(s => s.classList.remove('is-active'));
+        entry.target.classList.add('is-active');
+        const scene = +entry.target.getAttribute('data-scene');
+        if (scene !== state.currentScene) {
+          if (scene === 7 && state.timeOfDay === 'day') {
+            state.timeOfDay = 'night';
+            syncTimeToggles();
+          } else if (scene !== 7 && state.currentScene === 7 && state.timeOfDay === 'night') {
+            state.timeOfDay = 'day';
+            syncTimeToggles();
+          }
+          setScene(scene);
+          updateSceneDots(scene);
+        }
+      }
+    });
+  }, { threshold: 0.5 });
+  steps.forEach(step => observer.observe(step));
+}
+
+function syncTimeToggles() {
+  d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
+    return d3.select(this).attr('data-time') === state.timeOfDay;
+  });
+  const slider = document.getElementById('time-slider');
+  if (state.timeOfDay === 'night' && +slider.value < sunTimes.sunset) slider.value = 21;
+  else if (state.timeOfDay === 'day' && +slider.value >= sunTimes.sunset) slider.value = 12;
+  updateSliderReadout();
+  updateExploreMap();
+  updateScorePanel();
+  updateComparisonHighlight();
+  updateRecommendation();
+  if (state.mode === 'navigate') updateNavAlternative();
+}
+
+function updateSliderReadout() {
+  const slider = document.getElementById('time-slider');
+  const readout = document.getElementById('time-readout');
+  const h = +slider.value;
+  let phase, icon;
+  if (h < sunTimes.dawn) { phase = 'Night'; icon = '☾'; }
+  else if (h < sunTimes.sunrise) { phase = 'Dawn'; icon = '🌅'; }
+  else if (h < sunTimes.sunset) { phase = 'Daytime'; icon = '☀'; }
+  else if (h < sunTimes.dusk) { phase = 'Dusk'; icon = '🌇'; }
+  else { phase = 'Night'; icon = '☾'; }
+  state.timeOfDay = (h < sunTimes.sunset) ? 'day' : 'night';
+  readout.textContent = icon + ' ' + formatHour(h) + ' (' + phase + ')';
+  readout.className = 'time-slider-readout ' + state.timeOfDay;
+}
+
+function setupScrollTimeToggle() {
+  d3.select('#scroll-time-toggle').selectAll('button').on('click', function() {
+    const time = d3.select(this).attr('data-time');
+    state.timeOfDay = time;
+    d3.select('#scroll-time-toggle').selectAll('button').classed('active', false);
+    d3.select(this).classed('active', true);
+    const slider = document.getElementById('time-slider');
+    slider.value = time === 'night' ? 21 : 12;
+    updateSliderReadout();
+    if (state.currentScene === 7) setScene(7);
+    updateExploreMap();
+    updateScorePanel();
+    updateComparisonHighlight();
+    updateRecommendation();
+    if (state.mode === 'navigate') updateNavAlternative();
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   EXPLORE MAP (interactive, full controls)
+   ═══════════════════════════════════════════════════ */
+
+function drawExploreMap(colorScale) {
+  const svg = d3.select('#explore-map-svg');
+  const width = 800;
+  const height = 560;
+  svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+  const defs = svg.append('defs');
+  const glow = defs.append('filter').attr('id', 'light-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+  glow.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
+  glow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
+  const edgeGlow = defs.append('filter').attr('id', 'edge-glow').attr('x', '-10%').attr('y', '-10%').attr('width', '120%').attr('height', '120%');
+  edgeGlow.append('feGaussianBlur').attr('stdDeviation', '0.8').attr('result', 'blur');
+  edgeGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
+
+  const b = data.bounds;
+  const geoFeature = { type: "Feature", geometry: { type: "MultiPoint", coordinates: [[b.lng[0], b.lat[0]], [b.lng[1], b.lat[0]], [b.lng[1], b.lat[1]], [b.lng[0], b.lat[1]]] }};
+  exploreProjection = d3.geoMercator().fitExtent([[20, 20], [width - 20, height - 20]], geoFeature);
+
+  // Content group for zoom/pan
+  const content = svg.append('g').attr('id', 'explore-content');
+  content.append('rect').attr('width', width).attr('height', height)
+    .attr('fill', '#f8f9fa').attr('id', 'explore-bg');
+
+  // Water / San Diego Bay
+  const waterPath = COASTLINE.map(c => exploreProjection(c));
+  content.append('polygon')
+    .attr('points', waterPath.map(p => p.join(',')).join(' '))
+    .attr('fill', '#bfdbfe').attr('id', 'explore-water');
+  const bayCenter = exploreProjection([-117.165, 32.698]);
+  content.append('text').attr('x', bayCenter[0]).attr('y', bayCenter[1])
+    .text('San Diego Bay').attr('font-size', '16px').attr('fill', '#3b82f6')
+    .attr('font-weight', '500').attr('text-anchor', 'middle').attr('font-style', 'italic')
+    .attr('opacity', 0.5).attr('class', 'explore-label').style('pointer-events', 'none');
+
+  // Clip to land only
+  const expCoast = COASTLINE.slice(0, 11).map(c => exploreProjection(c));
+  const expLand = [[0,0],[width,0],[width,height], ...expCoast.reverse(), [0,height]];
+  defs.append('clipPath').attr('id', 'explore-land-clip')
+    .append('polygon').attr('points', expLand.map(p => p.join(',')).join(' '));
+
+  content.append('g').attr('id', 'explore-edges').attr('clip-path', 'url(#explore-land-clip)')
+    .selectAll('line').data(data.edges).join('line')
+    .attr('x1', d => exploreProjection(d.from)[0])
+    .attr('y1', d => exploreProjection(d.from)[1])
+    .attr('x2', d => exploreProjection(d.to)[0])
+    .attr('y2', d => exploreProjection(d.to)[1])
+    .attr('stroke', d => colorScale(d.score_day))
+    .attr('stroke-width', 3.5).attr('stroke-opacity', 0.85)
+    .attr('class', 'edge-line explore-edge')
+    .style('pointer-events', 'visibleStroke')
+    .on('mouseenter', function(event, d) {
+      const score = state.timeOfDay === 'day' ? d.score_day : d.score_night;
+      const s = Math.round(score * 100);
+      const midLng = (d.from[0] + d.to[0]) / 2, midLat = (d.from[1] + d.to[1]) / 2;
+      const hoods = [
+        { name: 'Little Italy', lng: -117.172, lat: 32.725 },
+        { name: 'Gaslamp Quarter', lng: -117.162, lat: 32.711 },
+        { name: 'East Village', lng: -117.148, lat: 32.715 },
+        { name: 'Marina', lng: -117.172, lat: 32.709 },
+        { name: 'Cortez Hill', lng: -117.165, lat: 32.723 },
+        { name: 'Convention Ctr', lng: -117.158, lat: 32.704 },
+        { name: 'Hillcrest', lng: -117.165, lat: 32.748 },
+        { name: 'Balboa Park', lng: -117.146, lat: 32.732 }
+      ];
+      let nearest = hoods[0];
+      let minD = Infinity;
+      hoods.forEach(h => { const dd = (h.lng - midLng)**2 + (h.lat - midLat)**2; if (dd < minD) { minD = dd; nearest = h; } });
+      const [mx, my] = d3.pointer(event, container);
+      d3.select('#explore-tooltip').style('opacity', 1)
+        .style('left', (mx + 12) + 'px').style('top', (my - 30) + 'px')
+        .html(`<strong>${nearest.name}: ${s}/100</strong> ${getQualLabel(score)}<br><span style="font-size:10px;color:#aaa">${Math.round(d.length)}m segment</span>`);
+      d3.select(this).attr('stroke-width', 5).attr('stroke-opacity', 1);
+    })
+    .on('mouseleave', function() {
+      d3.select('#explore-tooltip').style('opacity', 0);
+      d3.select(this).attr('stroke-width', null).attr('stroke-opacity', null);
+    });
+
+  content.append('g').attr('id', 'explore-crime').attr('clip-path', 'url(#explore-land-clip)');
+
+  const routeLayer = content.append('g').attr('id', 'explore-routes');
+  const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
+  const routeNames = Object.keys(data.routes);
+  const container = document.getElementById('explore-map-container');
+
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    routeLayer.append('path').datum(route.waypoints).attr('d', line)
+      .attr('fill', 'none').attr('stroke', '#fff')
+      .attr('stroke-width', i === 0 ? 10 : 0).attr('stroke-linecap', 'round')
+      .attr('class', 'explore-halo').attr('data-index', i);
+    routeLayer.append('path').datum(route.waypoints).attr('d', line)
+      .attr('fill', 'none').attr('stroke', route.color)
+      .attr('stroke-width', i === 0 ? 6 : 3.5)
+      .attr('stroke-opacity', i === 0 ? 1 : 0.45)
+      .attr('stroke-linecap', 'round').style('cursor', 'pointer')
+      .attr('class', 'explore-route').attr('data-index', i)
+      .on('click', () => selectRoute(i))
+      .on('mouseenter', function(event) {
+        const score = route.scores[state.timeOfDay];
+        const [mx, my] = d3.pointer(event, container);
+        d3.select('#explore-tooltip').style('opacity', 1)
+          .style('left', (mx + 12) + 'px').style('top', (my - 40) + 'px')
+          .html(`<strong>${name}</strong><br>Safety: ${Math.round(score * 100)}/100 (${getQualLabel(score)})`);
+      })
+      .on('mouseleave', () => d3.select('#explore-tooltip').style('opacity', 0));
+  });
+
+
+  // Streetlights above routes
+  content.append('g').attr('id', 'explore-lights').attr('clip-path', 'url(#explore-land-clip)');
+
+  // Neighborhood labels on top of everything
+  const labelLayer = content.append('g').attr('id', 'explore-labels');
+  [
+    { name: 'Little Italy', coords: [-117.1720, 32.7250], anchor: 'end' },
+    { name: 'Gaslamp Qtr', coords: [-117.1620, 32.7110], anchor: 'end' },
+    { name: 'East Village', coords: [-117.1480, 32.7150], anchor: 'start' },
+    { name: 'Marina', coords: [-117.1720, 32.7090], anchor: 'end' },
+    { name: 'Convention Ctr', coords: [-117.1580, 32.7035], anchor: 'middle' }
+  ].forEach(n => {
+    const [x, y] = exploreProjection(n.coords);
+    labelLayer.append('text').attr('x', x).attr('y', y).text(n.name)
+      .attr('font-size', '14px').attr('fill', '#222').attr('text-anchor', n.anchor).attr('font-weight', '700')
+      .attr('stroke', '#fff').attr('stroke-width', 5).attr('paint-order', 'stroke')
+      .attr('class', 'explore-label').style('pointer-events', 'none');
+  });
+
+  // Endpoint markers
+  updateExploreMarkers();
+
+  // Zoom/pan
+  const zoom = d3.zoom()
+    .scaleExtent([1, 6])
+    .translateExtent([[0, 0], [width, height]])
+    .on('zoom', (event) => {
+      content.attr('transform', event.transform);
+    });
+  svg.call(zoom);
+  exploreZoom = zoom;
+  svg.on('dblclick.zoom', null);
+
+  // Zoom controls
+  const zoomContainer = d3.select('#explore-map-container');
+  const zoomBtns = zoomContainer.append('div').attr('class', 'zoom-controls');
+  zoomBtns.append('button').attr('class', 'zoom-btn').text('+')
+    .on('click', () => svg.transition().duration(300).call(zoom.scaleBy, 1.5));
+  zoomBtns.append('button').attr('class', 'zoom-btn').text('–')
+    .on('click', () => svg.transition().duration(300).call(zoom.scaleBy, 0.67));
+  zoomBtns.append('button').attr('class', 'zoom-btn reset').text('↺')
+    .on('click', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
+}
+
+function updateExploreMap() {
+  const blend = getTimeBlend();
+  const isNight = state.timeOfDay === 'night';
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
+  const svg = d3.select('#explore-map-svg');
+  const container = document.getElementById('explore-map-container');
+  const content = svg.select('#explore-content');
+
+  // Atmosphere: smooth background transition
+  const bgColor = d3.interpolateRgb('#f8f9fa', '#0f172a')(blend);
+  container.style.borderColor = blend > 0.5 ? '#1e293b' : '#e0e0e0';
+  svg.select('#explore-bg').attr('fill', bgColor);
+
+  // Water color
+  svg.select('#explore-water').attr('fill', d3.interpolateRgb('#bfdbfe', '#0c4a6e')(blend));
+
+  // Edges: smooth blend between day and night scores
+  svg.selectAll('.explore-edge')
+    .attr('stroke', d => {
+      const score = d.score_day * (1 - blend) + d.score_night * blend;
+      return colorScale(score);
+    })
+    .attr('stroke-opacity', state.showEdges ? (0.85 + blend * 0.1) : 0)
+    .attr('stroke-width', 3.5);
+  svg.select('#explore-edges').attr('filter', null);
+
+  // Routes
+  svg.selectAll('.explore-route')
+    .attr('stroke-width', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 6 : 3.5; })
+    .attr('stroke-opacity', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 1 : 0.45; });
+  svg.selectAll('.explore-halo')
+    .attr('stroke-width', function() { return +d3.select(this).attr('data-index') === state.selectedRoute ? 10 : 0; });
+
+  // Streetlights: glow halo + bright center with twinkling at night
+  const lightData = data.streetlights || [];
+  const lightGroup = svg.select('#explore-lights');
+  const lightSel = lightGroup.selectAll('.light-unit').data(lightData, (d, i) => i);
+  const lightEnter = lightSel.enter().append('g').attr('class', 'light-unit')
+    .attr('transform', d => `translate(${exploreProjection(d)[0]},${exploreProjection(d)[1]})`);
+  lightEnter.append('circle').attr('class', 'light-halo');
+  lightEnter.append('circle').attr('class', 'light-core');
+  lightSel.exit().remove();
+  const shouldTwinkle = blend > 0.4;
+  const haloR = 1.5 + blend * 1.5;
+  const haloOpacity = 0.025 + blend * 0.08;
+  const lightAll = lightGroup.selectAll('.light-unit');
+  lightAll.each(function(d, i) {
+    const g = d3.select(this);
+    const dur = (2 + Math.random() * 3).toFixed(1) + 's';
+    const delay = (Math.random() * 3).toFixed(1) + 's';
+    g.select('.light-halo')
+      .attr('r', haloR)
+      .attr('fill', d3.interpolateRgb('#94a3b8', '#e0e7ff')(blend))
+      .attr('opacity', haloOpacity)
+      .classed('twinkling', shouldTwinkle)
+      .style('--halo-r', haloR)
+      .style('--halo-base', haloOpacity)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', shouldTwinkle ? delay : null);
+    g.select('.light-core')
+      .attr('r', 1.5 + blend * 1.2)
+      .attr('fill', d3.interpolateRgb('#64748b', '#fff')(blend))
+      .attr('opacity', 0.3 + blend * 0.7)
+      .classed('twinkling', shouldTwinkle)
+      .style('--twinkle-dur', dur)
+      .style('animation-delay', shouldTwinkle ? delay : null);
+  });
+
+  // Crime: filtered by time, fade with blend
+  const crimeFiltered = data.crime
+    ? data.crime.filter(c => {
+        const nightCrime = c.hour >= 18 || c.hour < 6;
+        return (isNight && nightCrime) || (!isNight && !nightCrime);
+      })
+    : [];
+  svg.select('#explore-crime').selectAll('circle')
+    .data(crimeFiltered, (d, i) => i)
+    .join('circle')
+    .attr('cx', d => exploreProjection(d.coords)[0]).attr('cy', d => exploreProjection(d.coords)[1])
+    .attr('r', 3)
+    .attr('fill', d3.interpolateRgb('#e8590c', '#fb923c')(blend))
+    .attr('opacity', 0.3 + blend * 0.3)
+    .attr('class', blend > 0.7 ? 'crime-dot-night' : '');
+
+  // Labels: smooth text color
+  const labelFill = d3.interpolateRgb('#222', '#cbd5e0')(blend);
+  const labelStroke = d3.interpolateRgb('#fff', '#0f172a')(blend);
+  svg.selectAll('.explore-label')
+    .attr('fill', labelFill).attr('stroke', labelStroke);
+
+  // Route score badge on selected route only
+  const routeNames = Object.keys(data.routes);
+  content.selectAll('.route-badge').remove();
+  const selName = routeNames[state.selectedRoute];
+  const selRoute = data.routes[selName];
+  const selMid = selRoute.waypoints[Math.floor(selRoute.waypoints.length / 2)];
+  const [bx, by] = exploreProjection(selMid);
+  const selScore = Math.round(selRoute.scores[state.timeOfDay] * 100);
+  {
+    const g = content.append('g').attr('class', 'route-badge');
+    const txt = g.append('text').attr('x', bx).attr('y', by - 10)
+      .text(selScore).attr('font-size', '13px').attr('font-weight', '700')
+      .attr('fill', blend > 0.5 ? '#fff' : selRoute.color)
+      .attr('text-anchor', 'middle').style('pointer-events', 'none');
+    const bbox = txt.node().getBBox();
+    g.insert('rect', 'text')
+      .attr('x', bbox.x - 4).attr('y', bbox.y - 2)
+      .attr('width', bbox.width + 8).attr('height', bbox.height + 4)
+      .attr('rx', 4).attr('fill', blend > 0.5 ? selRoute.color : '#fff')
+      .attr('opacity', 0.85);
+  }
+
+  // Dynamic insight annotations
+  content.selectAll('.explore-insight').remove();
+  if (blend > 0.6) {
+    const insights = [
+      { coords: [-117.162, 32.711], text: 'Gaslamp: 55 → 61', color: '#0891b2' },
+      { coords: [-117.148, 32.715], text: 'East Village: riskier', color: '#D97706' }
+    ];
+    insights.forEach(ins => {
+      const [x, y] = exploreProjection(ins.coords);
+      const g = content.append('g').attr('class', 'explore-insight').style('opacity', 0);
+      const txt = g.append('text').attr('x', x).attr('y', y)
+        .text(ins.text).attr('font-size', '13px').attr('fill', '#fff').attr('font-weight', '700')
+        .style('pointer-events', 'none');
+      const bbox = txt.node().getBBox();
+      g.insert('rect', 'text')
+        .attr('x', bbox.x - 8).attr('y', bbox.y - 5)
+        .attr('width', bbox.width + 16).attr('height', bbox.height + 10)
+        .attr('rx', 5).attr('fill', ins.color)
+        .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
+      g.transition().duration(400).style('opacity', Math.min((blend - 0.6) * 2.5, 1));
+    });
+  }
+
+  updateExploreMarkers();
+}
+
+function updateExploreMarkers() {
+  const svg = d3.select('#explore-map-svg');
+  svg.selectAll('.explore-marker').remove();
+  const routeNames = Object.keys(data.routes);
+  const name = routeNames[state.selectedRoute];
+  const route = data.routes[name];
+  const routeLayer = svg.select('#explore-routes');
+  const parts = name.split(' to ');
+  const startName = parts[0] || 'Start';
+  const endName = parts[1] || 'End';
+  const start = exploreProjection(route.waypoints[0]);
+  const end = exploreProjection(route.waypoints[route.waypoints.length - 1]);
+  const blend = getTimeBlend();
+  const textColor = blend > 0.5 ? '#e2e8f0' : route.color;
+  const haloColor = blend > 0.5 ? '#0f172a' : '#fff';
+  [{ pt: start, label: startName }, { pt: end, label: endName }].forEach(({ pt, label }) => {
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 8).attr('fill', route.color).attr('class', 'explore-marker');
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 4).attr('fill', '#fff').attr('class', 'explore-marker');
+    routeLayer.append('text').attr('x', pt[0] + 11).attr('y', pt[1] + 5).text(label)
+      .attr('font-size', '12px').attr('font-weight', '700').attr('fill', textColor)
+      .attr('stroke', haloColor).attr('stroke-width', 3).attr('paint-order', 'stroke')
+      .attr('class', 'explore-marker');
+  });
+}
+
+/* ── Explore controls ── */
+
+function buildRouteList() {
+  const list = d3.select('#route-list');
+  const routeNames = Object.keys(data.routes);
+  routeNames.forEach((name, i) => {
+    const li = list.append('li')
+      .classed('active', i === 0)
+      .attr('tabindex', '0').attr('role', 'button').attr('aria-pressed', i === 0 ? 'true' : 'false')
+      .on('click', () => selectRoute(i))
+      .on('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectRoute(i); } });
+    li.append('div').attr('class', 'route-dot').style('background', data.routes[name].color);
+    const ctx = ROUTE_CONTEXT[name];
+    const label = li.append('div').style('line-height', '1.3');
+    label.append('div').style('font-size', '10px').style('font-weight', '600').style('color', '#D97706').text(ctx ? ctx.type : '');
+    label.append('div').text(name);
+  });
+}
+
+function selectRoute(i) {
+  state.selectedRoute = i;
+  d3.select('#route-list').selectAll('li')
+    .classed('active', (_, j) => j === i)
+    .attr('aria-pressed', (_, j) => j === i ? 'true' : 'false');
+  d3.select('#nav-route-list').selectAll('li')
+    .classed('active', (_, j) => j === i);
+  updateExploreMap();
+  updateScorePanel();
+  updateComparisonHighlight();
+  updateRouteContext();
+  if (state.mode === 'navigate') updateNavAlternative();
+
+  // Zoom to route bounds
+  if (exploreZoom) {
+    const routeNames = Object.keys(data.routes);
+    const wps = data.routes[routeNames[i]].waypoints;
+    const pts = wps.map(w => exploreProjection(w));
+    const xMin = d3.min(pts, p => p[0]), xMax = d3.max(pts, p => p[0]);
+    const yMin = d3.min(pts, p => p[1]), yMax = d3.max(pts, p => p[1]);
+    const dx = xMax - xMin, dy = yMax - yMin;
+    const svgEl = d3.select('#explore-map-svg');
+    const vw = 800, vh = 760;
+    const scale = Math.min(vw / (dx + 80), vh / (dy + 80), 3);
+    const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
+    const tx = vw / 2 - cx * scale, ty = vh / 2 - cy * scale;
+    svgEl.transition().duration(600).call(
+      exploreZoom.transform,
+      d3.zoomIdentity.translate(tx, ty).scale(scale)
+    );
+  }
+}
+
+function updateRouteContext() {
+  const name = d3.select('#route-list li.active div:last-child div:last-child').text();
+  const ctx = ROUTE_CONTEXT[name];
+  const el = document.getElementById('route-context');
+  if (!ctx) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    `<div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">${ctx.type}</div>` +
+    `<div class="ctx-who">${ctx.who}</div>` +
+    `<div class="ctx-tip">${ctx.tip}</div>`;
+}
+
+function buildExploreToggles() {
+  d3.select('#tog-edges')
+    .on('click', function() {
+      const el = d3.select(this);
+      const isOn = el.classed('on');
+      el.classed('on', !isOn);
+      state.showEdges = !isOn;
+      updateExploreMap();
+    })
+    .on('keydown', function(event) {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); d3.select(this).dispatch('click'); }
+    });
+}
+
+function setupModeTabs() {
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      state.mode = mode;
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+      document.getElementById('suggested-panel').style.display = mode === 'suggested' ? '' : 'none';
+      document.getElementById('navigate-panel').style.display = mode === 'navigate' ? '' : 'none';
+      document.getElementById('score-panel').style.display = mode === 'suggested' ? '' : 'none';
+      if (mode === 'suggested') {
+        d3.select('#explore-map-svg').selectAll('.nav-route').remove();
+        d3.select('#explore-map-svg').selectAll('.nav-marker').remove();
+        updateExploreMap();
+        updateExploreMarkers();
+      } else {
+        updateExploreMap();
+        updateNavAlternative();
+      }
+    });
+  });
+}
+
+function setupTimeSlider() {
+  const slider = document.getElementById('time-slider');
+  const dateSlider = document.getElementById('date-slider');
+
+  function onTimeChange() {
+    const hour = +slider.value;
+    const newTime = hour < sunTimes.sunset ? 'day' : 'night';
+    updateSliderReadout();
+    updateExploreMap();
+    updateRecommendation();
+    if (newTime !== state.timeOfDay) {
+      state.timeOfDay = newTime;
+      d3.select('#scroll-time-toggle').selectAll('button').classed('active', function() {
+        return d3.select(this).attr('data-time') === newTime;
+      });
+      if (state.currentScene === 7) setScene(7);
+      updateScorePanel();
+      updateComparisonHighlight();
+      updateRecommendation();
+      if (state.mode === 'navigate') updateNavAlternative();
+      updateRouteContext();
+    }
+  }
+
+  slider.addEventListener('input', onTimeChange);
+  dateSlider.addEventListener('input', function() {
+    updateSunUI();
+    onTimeChange();
+  });
+  updateSunUI();
+}
+
+function setupNavigateMode() {
+  const list = d3.select('#nav-route-list');
+  const routeNames = Object.keys(data.routes);
+  routeNames.forEach((name, i) => {
+    const route = data.routes[name];
+    const li = list.append('li')
+      .classed('active', i === 0)
+      .on('click', () => selectNavRoute(i));
+    li.append('div').attr('class', 'route-dot').style('background', route.color);
+    li.append('span').text(name);
+  });
+  updateNavAlternative();
+}
+
+function selectNavRoute(i) {
+  state.selectedRoute = i;
+  d3.select('#nav-route-list').selectAll('li').classed('active', (_, j) => j === i);
+  d3.select('#route-list').selectAll('li').classed('active', (_, j) => j === i);
+  updateExploreMap();
+  updateScorePanel();
+  updateComparisonHighlight();
+  updateNavAlternative();
+}
+
+function updateNavAlternative() {
+  const svg = d3.select('#explore-map-svg');
+  svg.selectAll('.nav-route').remove();
+  svg.selectAll('.nav-marker').remove();
+
+  const routeNames = Object.keys(data.routes);
+  const route = data.routes[routeNames[state.selectedRoute]];
+  const startCoords = route.waypoints[0];
+  const endCoords = route.waypoints[route.waypoints.length - 1];
+  const startIdx = findNearestNode(startCoords);
+  const endIdx = findNearestNode(endCoords);
+
+  // Three routing profiles
+  const profiles = [
+    { name: 'Fastest', multiplier: 0, color: '#9CA3AF', dash: '6,4', width: 3 },
+    { name: 'Balanced', multiplier: 0.5, color: '#D97706', dash: '', width: 4 },
+    { name: 'Extra Caution', multiplier: 1.0, color: '#0891b2', dash: '', width: 4 }
+  ];
+
+  const results = profiles.map(p => {
+    const r = dijkstraRoute(startIdx, endIdx, p.multiplier);
+    if (!r) return null;
+    const walkMin = Math.round(r.totalLen / 83);
+    return { ...p, path: r.path, score: Math.round(r.avgScore * 100), dist: Math.round(r.totalLen), min: walkMin, qualLabel: getQualLabel(r.avgScore) };
+  }).filter(Boolean);
+
+  const container = document.getElementById('nav-comparison');
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding:8px;font-size:12px;color:#888;">No routes found.</div>';
+    return;
+  }
+
+  // Draw routes on map
+  const line = d3.line().x(d => exploreProjection(d)[0]).y(d => exploreProjection(d)[1]).curve(d3.curveLinear);
+  const routeLayer = svg.select('#explore-routes');
+  results.forEach(r => {
+    if (r.path.length < 2) return;
+    routeLayer.append('path').datum(r.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', r.width + 4)
+      .attr('stroke-linecap', 'round').attr('class', 'nav-route').style('opacity', 0.6);
+    routeLayer.append('path').datum(r.path).attr('d', line)
+      .attr('fill', 'none').attr('stroke', r.color).attr('stroke-width', r.width)
+      .attr('stroke-linecap', 'round').attr('class', 'nav-route')
+      .attr('stroke-dasharray', r.dash || null);
+  });
+
+  // Endpoint markers
+  const startPt = exploreProjection(results[0].path[0]);
+  const endPt = exploreProjection(results[0].path[results[0].path.length - 1]);
+  [{ pt: startPt, c: '#2563eb' }, { pt: endPt, c: '#D97706' }].forEach(({ pt, c }) => {
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 7).attr('fill', c).attr('class', 'nav-marker');
+    routeLayer.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3).attr('fill', '#fff').attr('class', 'nav-marker');
+  });
+
+  // Comparison card with safety-vs-distance tradeoff (Q1 from question framing brief)
+  const fastest = results.find(r => r.name === 'Fastest');
+  const safest = results.find(r => r.name === 'Extra Caution');
+  const balanced = results.find(r => r.name === 'Balanced');
+  const distOverhead = safest && fastest && fastest.dist > 0
+    ? Math.round((safest.dist - fastest.dist) / fastest.dist * 100) : 0;
+  const timeOverhead = safest && fastest ? safest.min - fastest.min : 0;
+  const scoreGain = safest && fastest ? safest.score - fastest.score : 0;
+  const balancedGainRatio = balanced && safest && fastest && (safest.score - fastest.score) > 0
+    ? Math.round((balanced.score - fastest.score) / (safest.score - fastest.score) * 100) : 0;
+
+  let tradeoffHtml = '';
+  if (safest && fastest) {
+    const verdict = distOverhead <= 25
+      ? 'The safer route is practical. Worth the detour.'
+      : 'Significant detour. Consider the balanced option.';
+    tradeoffHtml = `
+      <div class="nav-compare-delta">
+        <div style="font-size:13px;font-weight:600;">+${scoreGain} safety points for +${distOverhead}% more distance (~${timeOverhead} min)</div>
+        <div style="font-size:11px;margin-top:4px;opacity:0.8;">${verdict}</div>
+      </div>`;
+  }
+
+  container.innerHTML =
+    `<div class="nav-compare-card">
+      ${results.map(r => {
+        const overhead = fastest && fastest.dist > 0
+          ? Math.round((r.dist - fastest.dist) / fastest.dist * 100) : 0;
+        const overheadLabel = r.name === 'Fastest' ? '' : ` · +${overhead}%`;
+        return `
+        <div class="nav-compare-row" style="border-left: 3px solid ${r.color};">
+          <span class="nav-compare-tag" style="background:${r.color}20;color:${r.color};">${r.name}</span>
+          <span class="nav-compare-score">${r.score}</span>
+          <span class="nav-compare-detail">${r.qualLabel} · ${r.dist}m · ~${r.min} min${overheadLabel}</span>
+        </div>`;
+      }).join('')}
+      ${tradeoffHtml}
+    </div>
+    <p style="font-size:10px;color:#9CA3AF;margin-top:8px;">
+      Cost = length × (1 + multiplier × (1 − score))<br>
+      Fastest: m=0 · Balanced: m=0.5 · Extra Caution: m=1.0
+    </p>`;
+}
+
+function updateScorePanel() {
+  const routeNames = Object.keys(data.routes);
+  const route = data.routes[routeNames[state.selectedRoute]];
+  const timeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  const allScores = routeNames.map(n => data.routes[n].scores[state.timeOfDay]).sort((a, b) => b - a);
+  const rank = allScores.indexOf(route.scores[state.timeOfDay]) + 1;
+  const categories = [
+    { key: timeKey, label: 'Crime Safety', color: '#e8590c' },
+    { key: 'lighting', label: 'Lighting & Roads', color: '#64748b' },
+    { key: 'traffic', label: 'Walkable Streets', color: '#3b82f6' },
+    { key: state.timeOfDay, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
+  ];
+  const shortName = routeNames[state.selectedRoute].split(' to ')[0];
+  document.getElementById('score-panel-title').textContent = shortName + ' (#' + rank + ' of ' + routeNames.length + ')';
+  const container = d3.select('#score-bars');
+  container.html('');
+  categories.forEach(cat => {
+    const val = route.scores[cat.key];
+    const bar = container.append('div').attr('class', 'score-bar');
+    const label = bar.append('div').attr('class', 'score-label');
+    label.append('span').text(cat.label);
+    label.append('span').text(Math.round(val * 100));
+    const track = bar.append('div').attr('class', 'score-track');
+    track.append('div').attr('class', 'score-fill')
+      .style('width', (val * 100) + '%').style('background', cat.color);
+    bar.append('div').attr('class', 'score-qual').text(getQualLabel(val));
+  });
+}
+
+/* ═══ ROUTE RECOMMENDATION ═══ */
+
+function estimateWalkMin(route) {
+  const wps = route.waypoints;
+  let d = 0;
+  for (let i = 1; i < wps.length; i++) {
+    const dx = (wps[i][0] - wps[i-1][0]) * 111320 * Math.cos(wps[i][1] * Math.PI / 180);
+    const dy = (wps[i][1] - wps[i-1][1]) * 110540;
+    d += Math.sqrt(dx * dx + dy * dy);
+  }
+  return Math.round(d / 83);
+}
+
+function updateRecommendation() {
+  const routeNames = Object.keys(data.routes);
+  const timeKey = state.timeOfDay;
+  const ranked = routeNames.map(name => ({
+    name,
+    score: data.routes[name].scores[timeKey],
+    dayScore: data.routes[name].scores.day,
+    nightScore: data.routes[name].scores.night,
+    walkMin: estimateWalkMin(data.routes[name])
+  })).sort((a, b) => b.score - a.score);
+
+  const safest = ranked[0];
+  const worst = ranked[ranked.length - 1];
+
+  const shifts = routeNames.map(name => {
+    const r = data.routes[name].scores;
+    return { name, delta: Math.round((r.night - r.day) * 100) };
+  }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const bigShift = shifts[0];
+
+  const h = +document.getElementById('time-slider').value;
+  const hr = h > 12 ? h - 12 : h;
+  const ampm = (h >= 12 && h < 24) ? 'PM' : 'AM';
+  const timeStr = hr + ' ' + ampm;
+  const shortSafest = safest.name.split(' to ')[0];
+  const shortWorst = worst.name.split(' to ')[0];
+  const shortShift = bigShift.name.split(' to ')[0];
+  const sign = bigShift.delta > 0 ? '+' : '';
+  document.getElementById('rec-safest-name').textContent = shortSafest;
+  document.getElementById('rec-safest-score').textContent = '(' + Math.round(safest.score * 100) + ')';
+  document.getElementById('rec-avoid-name').textContent = shortWorst;
+  document.getElementById('rec-avoid-score').textContent = '(' + Math.round(worst.score * 100) + ')';
+  document.getElementById('rec-shift-name').textContent = shortShift;
+  document.getElementById('rec-shift-score').textContent = sign + bigShift.delta + 'pts';
+}
+
+/* ═══ COMPARISON CHART ═══ */
+
+function drawComparisonChart() {
+  const svg = d3.select('#comparison-chart');
+  const margin = { top: 10, right: 60, bottom: 10, left: 180 };
+  const width = (svg.node().getBoundingClientRect().width || 800) - margin.left - margin.right;
+  const height = 340 - margin.top - margin.bottom;
+  svg.attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
+  svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`).attr('id', 'chart-g');
+  updateComparisonHighlight();
+}
+
+function updateComparisonHighlight() {
+  const svg = d3.select('#comparison-chart');
+  const g = svg.select('#chart-g');
+  g.selectAll('*').remove();
+
+  const routeNames = Object.keys(data.routes);
+  const timeKey = state.timeOfDay;
+  const crimeKey = timeKey === 'day' ? 'crime_day' : 'crime_night';
+
+  const ranked = routeNames.map((name, i) => ({
+    name, i,
+    overall: data.routes[name].scores[timeKey],
+    crime: data.routes[name].scores[crimeKey],
+    lighting: data.routes[name].scores.lighting,
+    walk: data.routes[name].scores.traffic
+  })).sort((a, b) => b.overall - a.overall);
+
+  const margin = { left: 180, right: 60 };
+  const totalW = (svg.node().getBoundingClientRect().width || 800);
+  const barW = totalW - margin.left - margin.right;
+  const barH = 28;
+  const gap = 14;
+
+  const x = d3.scaleLinear().domain([0, 100]).range([0, barW]);
+  const grayDefault = '#E5E7EB';
+  const highlight = '#D97706';
+
+  ranked.forEach((r, idx) => {
+    const yPos = idx * (barH + gap);
+    const isSelected = r.i === state.selectedRoute;
+    const barColor = isSelected ? highlight : grayDefault;
+    const textColor = isSelected ? '#1F2937' : '#6B7280';
+    const score = Math.round(r.overall * 100);
+
+    const short = r.name.includes(' to ') ? r.name.split(' to ')[0] + ' → ' + r.name.split(' to ')[1].split(' ')[0] : r.name;
+    g.append('text').attr('x', -8).attr('y', yPos + barH / 2 + 4)
+      .attr('text-anchor', 'end').attr('font-size', '12px').attr('fill', textColor)
+      .attr('font-weight', isSelected ? '600' : '400').text(short);
+
+    g.append('rect').attr('x', 0).attr('y', yPos)
+      .attr('width', x(score)).attr('height', barH)
+      .attr('fill', barColor).attr('rx', 4)
+      .attr('class', 'chart-bar').attr('data-route', r.i)
+      .style('cursor', 'pointer')
+      .on('click', () => selectRoute(r.i))
+      .on('mouseenter', function() { d3.select(this).attr('opacity', 1); })
+      .on('mouseleave', function() { d3.select(this).attr('opacity', null); });
+
+    const dayScore = Math.round(data.routes[r.name].scores.day * 100);
+    const nightScore = Math.round(data.routes[r.name].scores.night * 100);
+    const delta = nightScore - dayScore;
+    const deltaStr = delta > 0 ? '+' + delta : delta < 0 ? '' + delta : '';
+    const deltaColor = delta > 0 ? '#2563eb' : delta < 0 ? '#D97706' : '#9CA3AF';
+    g.append('text').attr('x', x(score) + 6).attr('y', yPos + barH / 2 + 4)
+      .attr('font-size', '13px').attr('fill', textColor).attr('font-weight', '600')
+      .text(score);
+    if (deltaStr) {
+      g.append('text').attr('x', x(score) + 34).attr('y', yPos + barH / 2 + 4)
+        .attr('font-size', '10px').attr('fill', deltaColor)
+        .text(deltaStr + ' at night');
+    }
+
+    if (isSelected) {
+      const crimeW = x(Math.round(r.crime * 50));
+      const lightW = x(Math.round(r.lighting * 25));
+      const walkW = x(Math.round(r.walk * 25));
+      let offset = 0;
+      [{ w: crimeW, c: '#D97706', l: 'Crime' },
+       { w: lightW, c: '#9CA3AF', l: 'Lighting' },
+       { w: walkW, c: '#E5E7EB', l: 'Walkable' }].forEach(seg => {
+        g.append('rect').attr('x', offset).attr('y', yPos + barH + 3)
+          .attr('width', seg.w).attr('height', 6).attr('fill', seg.c).attr('rx', 2);
+        offset += seg.w;
+      });
+      g.append('text').attr('x', 0).attr('y', yPos + barH + 20)
+        .attr('font-size', '10px').attr('fill', '#6B7280')
+        .text('Crime ' + Math.round(r.crime * 100) + '  |  Lighting ' + Math.round(r.lighting * 100) + '  |  Walkable ' + Math.round(r.walk * 100));
+    }
+  });
+
+  g.selectAll('.x-grid').data(x.ticks(5)).join('line').attr('class', 'x-grid')
+    .attr('x1', d => x(d)).attr('x2', d => x(d))
+    .attr('y1', 0).attr('y2', ranked.length * (barH + gap) - gap)
+    .attr('stroke', '#F3F4F6').attr('stroke-width', 1).lower();
+}
+
+init();
+
+const findingObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.3 });
+document.querySelectorAll('.finding-card').forEach(c => findingObs.observe(c));
+
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 50) document.getElementById('scroll-cue').classList.add('hidden');
+}, { passive: true });
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const slider = document.getElementById('time-slider');
+  if (e.key === 'd' || e.key === 'D') { slider.value = 12; slider.dispatchEvent(new Event('input')); }
+  if (e.key === 'n' || e.key === 'N') { slider.value = 21; slider.dispatchEvent(new Event('input')); }
+  if (e.key === 'ArrowLeft' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute - 1 + n) % n); }
+  if (e.key === 'ArrowRight' && data) { const n = Object.keys(data.routes).length; selectRoute((state.selectedRoute + 1) % n); }
+});
+
+/* ═══ WEIGHT SANDBOX ═══ */
+
+const wCrime = document.getElementById('w-crime');
+const wLight = document.getElementById('w-light');
+const wWalk = document.getElementById('w-walk');
+const wCrimeVal = document.getElementById('w-crime-val');
+const wLightVal = document.getElementById('w-light-val');
+const wWalkVal = document.getElementById('w-walk-val');
+const wInsight = document.getElementById('weight-insight');
+
+function getCustomWeights() {
+  const c = +wCrime.value, l = +wLight.value, w = +wWalk.value;
+  const total = c + l + w || 1;
+  return { crime: c / total, lighting: l / total, walk: w / total };
+}
+
+function customRouteScore(route, weights) {
+  const crimeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  return route.scores[crimeKey] * weights.crime +
+         route.scores.lighting * weights.lighting +
+         route.scores.traffic * weights.walk;
+}
+
+function updateWeightInsight() {
+  const weights = getCustomWeights();
+  const routeNames = Object.keys(data.routes);
+  const ranked = routeNames.map(name => ({
+    name, score: customRouteScore(data.routes[name], weights)
+  })).sort((a, b) => b.score - a.score);
+
+  const defaultWeights = { crime: 0.5, lighting: 0.25, walk: 0.25 };
+  const defaultRanked = routeNames.map(name => ({
+    name, score: customRouteScore(data.routes[name], defaultWeights)
+  })).sort((a, b) => b.score - a.score);
+
+  const defaultOrder = defaultRanked.map(r => r.name).join(',');
+  const newOrder = ranked.map(r => r.name).join(',');
+  const crimeZero = +wCrime.value === 0;
+  const crimeMax = +wCrime.value >= 80;
+
+  if (crimeZero) {
+    const spread = Math.round((ranked[0].score - ranked[ranked.length - 1].score) * 100);
+    wInsight.textContent = spread < 5
+      ? 'Without crime, all routes score nearly the same. Crime is the differentiator.'
+      : 'Even without crime, there is a ' + spread + '-point gap.';
+  } else if (crimeMax) {
+    wInsight.textContent = 'At maximum crime weight, the ranking matches the default. Crime was already dominant.';
+  } else if (defaultOrder !== newOrder) {
+    wInsight.textContent = 'Route rankings changed! The safest route is now ' + ranked[0].name.split(' to ')[0] + '.';
+  } else {
+    wInsight.textContent = '';
+  }
+  wInsight.style.background = wInsight.textContent ? '#FEF3C7' : 'transparent';
+}
+
+function onWeightChange() {
+  wCrimeVal.textContent = wCrime.value + '%';
+  wLightVal.textContent = wLight.value + '%';
+  wWalkVal.textContent = wWalk.value + '%';
+  if (!data) return;
+  const weights = getCustomWeights();
+
+  // Recolor explore map edges by shifting the color blend
+  const svg = d3.select('#explore-map-svg');
+  const blend = getTimeBlend();
+  const colorScale = d3.scaleDiverging(t => d3.interpolateRgb('#e8590c', '#2166ac')(t)).domain([0.0, 0.5, 1.0]);
+  const crimeShift = weights.crime - 0.5;
+  svg.selectAll('.explore-edge')
+    .attr('stroke', d => {
+      const base = d.score_day * (1 - blend) + d.score_night * blend;
+      const shifted = Math.max(0, Math.min(1, base + crimeShift * (base - 0.5) * 0.5));
+      return colorScale(shifted);
+    });
+
+  // Update score panel with custom weights
+  const routeNames = Object.keys(data.routes);
+  const route = data.routes[routeNames[state.selectedRoute]];
+  const crimeKey = state.timeOfDay === 'day' ? 'crime_day' : 'crime_night';
+  const customScore = customRouteScore(route, weights);
+  const allCustom = routeNames.map(n => customRouteScore(data.routes[n], weights)).sort((a, b) => b - a);
+  const rank = allCustom.indexOf(customScore) + 1;
+  const shortName = routeNames[state.selectedRoute].split(' to ')[0];
+  document.getElementById('score-panel-title').textContent = shortName + ' (#' + rank + ' of ' + routeNames.length + ')';
+
+  const categories = [
+    { val: route.scores[crimeKey] * weights.crime / (weights.crime || 0.01), label: 'Crime (' + Math.round(weights.crime * 100) + '%)', color: '#e8590c' },
+    { val: route.scores.lighting * weights.lighting / (weights.lighting || 0.01), label: 'Lighting (' + Math.round(weights.lighting * 100) + '%)', color: '#64748b' },
+    { val: route.scores.traffic * weights.walk / (weights.walk || 0.01), label: 'Walkability (' + Math.round(weights.walk * 100) + '%)', color: '#2166ac' },
+    { val: customScore, label: 'Overall (' + state.timeOfDay + ')', color: '#2d3748' }
+  ];
+  const container = d3.select('#score-bars');
+  container.html('');
+  categories.forEach(cat => {
+    const bar = container.append('div').attr('class', 'score-bar');
+    const label = bar.append('div').attr('class', 'score-label');
+    label.append('span').text(cat.label);
+    label.append('span').text(Math.round(cat.val * 100));
+    const track = bar.append('div').attr('class', 'score-track');
+    track.append('div').attr('class', 'score-fill')
+      .style('width', (cat.val * 100) + '%').style('background', cat.color);
+  });
+
+  // Update comparison chart
+  updateComparisonHighlight();
+  updateRecommendation();
+  updateWeightInsight();
+}
+
+[wCrime, wLight, wWalk].forEach(s => s.addEventListener('input', onWeightChange));
+document.getElementById('w-reset').addEventListener('click', () => {
+  wCrime.value = 50; wLight.value = 25; wWalk.value = 25;
+  onWeightChange();
+});
+
+/* ═══ ROLE-SPECIFIC NARRATIVE ═══ */
+
+const ROLE_TEXT = {
+  nightwalker: {
+    s1: '<p>67% of women say walking alone at night is their greatest safety fear. They already scan for unlit streets and avoid quiet blocks, but navigation apps like Google Maps ignore safety entirely and optimize for speed.</p><p>This map shows every walkable street in downtown San Diego, a mid-size coastal city in the US. We scored all of them for safety. The data says one route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. These are the same factors you already evaluate mentally when you walk at night. We just turned them into numbers.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures things like block length, nearby shops, and transit stops. This entire downtown scores high, so the map is almost entirely blue. That is the problem: walkability alone cannot tell you which streets are safe to walk at night.</p><p style="font-size:12px;color:#888;">Uniform color. If this were the only score, you would have no way to choose a safer route.</p>',
+    s4: '<p>Each dot is a real streetlight. Well-lit streets feel safer, and they are, but lighting coverage is uneven. The left side of the map has dense coverage; the right side has dark patches. You already notice these gaps instinctively. Now you can see them mapped.</p><p style="font-size:12px;color:#888;">Some variation, but still not enough to explain the full safety gap between routes.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This is the layer that matches what you feel walking at night. Watch the map fracture. The streets that <em>felt</em> different now <em>look</em> different. Crime density is what your instincts were detecting all along.</p><p style="font-size:12px;color:#888;">The left side stays blue (safe). The center turns orange (dangerous).</p>',
+    s6: '<p>These five routes connect the kinds of places you might walk between after dark: a transit station to an event venue, a restaurant district to the waterfront, a residential block to a transit hub. Each passes through different safety zones.</p><p style="font-size:12px;color:#888;">Hover any colored line to see its score. The safest route might not be the one you would guess.</p>',
+    s7: '<p>At night, everything changes. The nightlife district (center) gets <em>safer</em> because crowds fill the streets. The residential area to the east gets worse. If you are walking home after 9 PM, the route that felt fine at lunch could be the worst option.</p>',
+    s8: '<p>The safest route at 2 PM is not the safest at 2 AM. Crime density drives the entire 18-point gap between routes, and crime patterns shift with time of day. A navigation app that ignores this is sending you through danger zones.</p><p>Scroll down to explore the routes yourself. Drag the time slider to see how your walk home changes hour by hour.</p>'
+  },
+  tourist: {
+    s1: '<p>Research shows that how safe you feel walking depends heavily on how familiar you are with the area (CHI 2024). As a visitor, you do not know which blocks to avoid, and Google Maps will not tell you. It optimizes for speed, not safety.</p><p>This map shows every walkable street in downtown San Diego, scored for pedestrian safety using crime, lighting, and walkability data. One route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. Locals know these patterns from experience. As a visitor, you need the data to see what they already know.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures access to shops, transit, and short blocks. This downtown scores high everywhere, which is why it feels inviting to walk around. But "pleasant to walk" is not the same as "safe to walk." This layer cannot tell you where to avoid.</p><p style="font-size:12px;color:#888;">Uniform color. Every neighborhood looks equally walkable. But they are not equally safe.</p>',
+    s4: '<p>Each dot is a real streetlight. The main tourist corridors (left side) are well-lit. But if your hotel is a few blocks east, the walk back gets darker. As a visitor, you would not know this until you are already on the street.</p><p style="font-size:12px;color:#888;">Lighting gaps are invisible on Google Maps. Here, you can see them before you leave.</p>',
+    s5: '<p>Each orange dot is a real crime incident. Watch the map fracture. The waterfront and restaurant districts (left) stay blue. The blocks behind the convention center and east of the nightlife area turn orange. A local would avoid these. You would not know to.</p><p style="font-size:12px;color:#888;">This single variable drives the entire safety gap between routes.</p>',
+    s6: '<p>These five routes connect the kinds of places tourists actually walk: from a train station to a stadium, from a restaurant district to the waterfront, from a conference center to nightlife. Each crosses different safety zones that a visitor would not know about.</p><p style="font-size:12px;color:#888;">Hover any route. Would you have guessed which one is safest?</p>',
+    s7: '<p>Dinner ends at 9 PM and you want to walk back to your hotel. The route that was safe at noon might not be anymore. The nightlife district gets safer (more foot traffic), but the residential area to the east gets riskier. Without local knowledge, you would not know this.</p>',
+    s8: '<p>As a visitor, you do not have years of experience telling you which blocks to avoid. Crime density drives the entire 18-point safety gap between routes, and it shifts throughout the day. A tool like this fills the local-knowledge gap that every tourist faces.</p><p>Explore below to check the safety of any route in the city, at any hour.</p>'
+  },
+  student: {
+    s1: '<p>San Diego City College sits right in the middle of this map. Its 15,000 students walk through East Village, the Gaslamp, and past the Convention Center every day. 74% of college students say walking home in the dark makes them feel unsafe (ADT/RuffaloCMB survey). But campus apps only offer panic buttons, not route guidance.</p><p>This map scores every street these students walk. One route choice can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. Think of it as a safety grade for every block between City College and wherever you live, eat, or catch the trolley.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures access to shops, transit, and short blocks. Downtown scores high everywhere, which means this factor cannot tell you whether to take one street or another after an evening class at City College. You need more than walkability.</p><p style="font-size:12px;color:#888;">Uniform color. Every block looks equally walkable. But ask any student who has walked to the 12th & Imperial trolley station at midnight. They are not.</p>',
+    s4: '<p>Each dot is a real streetlight. Notice how coverage is dense on the main roads but drops off on the side streets east of campus. Those dark side streets are often the shortcuts students take to save five minutes walking to the trolley. Sometimes those five minutes matter more than you think.</p><p style="font-size:12px;color:#888;">The City College campus is lit. The blocks around it are not all equal.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This is the layer that explains why some walks from campus feel wrong. The blocks between City College and the Gaslamp have clusters. The streets toward Little Italy (left) are quieter. Your instinct about "that sketchy block" probably matches this map.</p><p style="font-size:12px;color:#888;">Crime density is the single variable that drives the 18-point safety gap between routes.</p>',
+    s6: '<p>These five routes represent trips a City College student might take: from the trolley hub at 12th & Imperial to campus, from the Gaslamp restaurants to East Village apartments, from the waterfront back to Little Italy housing. Each passes through different safety zones.</p><p style="font-size:12px;color:#888;">Hover any route to see its score. Think about your own walk home from campus.</p>',
+    s7: '<p>Your 8 AM class and your 9 PM evening section end on the same campus, but the walk to the trolley is a completely different experience. The Gaslamp (center) gets safer at night because crowds fill the bars and restaurants. The residential blocks in East Village get riskier. Toggle to see the shift.</p>',
+    s8: '<p>City College has campus police, but their coverage stops at the campus boundary. The blocks between campus and the trolley, between campus and student housing, between campus and the restaurants where you eat, those are the streets this tool scores. The 18-point gap is driven by crime, and crime shifts with time of day.</p><p>Explore below. Drag the time slider to the hour your last class ends.</p>'
+  },
+  runner: {
+    s1: '<p>Running safety apps like Road iD, eBodyGuard, and One Scream track your location and send emergency alerts. But none of them score the safety of your route before you start running. They are reactive, not proactive.</p><p>This map shows every street in downtown San Diego, scored for pedestrian safety using crime, lighting, and walkability data. For a runner choosing an evening route, one path can be <strong>18 points safer</strong> than another. Scroll to see why.</p>',
+    s2: '<p>We scored each of the 5,500 street segments using three public datasets: crime reports, streetlight locations, and walkability metrics. For a runner, this is the difference between choosing a route by distance alone and choosing one that accounts for what the streets are actually like.</p><p style="font-size:12px;color:#888;">Higher score = safer street. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability measures things like block length and nearby transit. For a runner, these matter less because you are not stopping at shops. But the score is uniformly high downtown, which means this layer cannot help you pick a safer running route anyway.</p><p style="font-size:12px;color:#888;">Uniform color. A runner needs different data than a commuter.</p>',
+    s4: '<p>Each dot is a real streetlight. Well-lit streets mean you can see the pavement, spot obstacles, and be seen by others. For an evening run, lighting coverage is the difference between a comfortable loop and a stressful one. Notice the gaps on the right side of the map.</p><p style="font-size:12px;color:#888;">Running apps like Strava show your pace. None of them show you this.</p>',
+    s5: '<p>Each orange dot is a real crime incident. This layer reshapes what a "good running route" looks like. The waterfront corridor (left) stays blue and safe for laps. The blocks near the nightlife area (center) light up orange. A two-block shift in your route could mean running through safe streets instead of risky ones.</p><p style="font-size:12px;color:#888;">Crime density is the single variable that drives the 18-point safety gap.</p>',
+    s6: '<p>These five routes are the length and type of paths a runner might take: loops through different neighborhoods, out-and-back stretches, park approaches. Each crosses different safety zones that affect your run differently.</p><p style="font-size:12px;color:#888;">Hover any route. Would you run the lowest-scored one after sunset?</p>',
+    s7: '<p>Most runners prefer early morning or evening runs. That is exactly when safety scores shift the most. The nightlife area gets safer after dark (foot traffic), but the quieter residential blocks get worse. Your 6 AM run and your 8 PM run follow different safety maps.</p>',
+    s8: '<p>Running safety is not just about carrying your phone and sharing your location. It starts with route choice. Crime density drives the 18-point gap, and it shifts with time of day. Choosing a route two blocks over could mean running through safe streets instead of risky ones.</p><p>Explore below. Set the time slider to your usual run time and see what the map looks like.</p>'
+  },
+  planner: {
+    s1: '<p>City planners use crash databases, GIS audits, and manual walking surveys to assess pedestrian safety. But these tools are fragmented and do not combine crime, lighting, and walkability into a single street-level score.</p><p>This map scores all 5,500 street segments in downtown San Diego using three public datasets. It reveals where infrastructure investment would have the most impact. The gap between the safest and least-safe corridor is <strong>18 points</strong>. Scroll to see what drives it.</p>',
+    s2: '<p>The composite score combines three layers that planners typically assess separately: crime density (from police records), streetlight coverage (from city inventory), and walkability (from the EPA Smart Location Database). Here they are unified at street-segment level.</p><p style="font-size:12px;color:#888;">Higher score = safer segment. <span style="color:#e8590c;font-weight:600;">Orange = dangerous</span>, <span style="color:#2166ac;font-weight:600;">blue = safe</span>.</p>',
+    s3: '<p>Walkability is uniform across this downtown (EPA scores cluster near 0.50). This is a data resolution finding: the EPA Smart Location Database is designed for metro-level comparison, not block-level differentiation. For a planner, this means walkability does not help prioritize within a downtown.</p><p style="font-size:12px;color:#888;">Uniform color. This layer has no actionable variance for infrastructure decisions at this scale.</p>',
+    s4: '<p>Each dot is a streetlight from the city inventory. Coverage is dense on main corridors but sparse on side streets, particularly in the eastern residential blocks. This is the layer a planner can directly act on: streetlight placement is an infrastructure decision with measurable impact on safety scores.</p><p style="font-size:12px;color:#888;">The question is: which gaps matter most? Keep scrolling.</p>',
+    s5: '<p>Each orange dot is a crime incident from police records. Crime density dominates the composite score. It explains nearly all of the 18-point gap between the safest and least-safe corridors. Streetlights alone will not close this gap, but the spatial overlap between dark segments and crime clusters reveals where lighting investment could have a secondary deterrent effect.</p><p style="font-size:12px;color:#888;">FHWA systemic safety analysis identifies risk factors proactively. This visualization does the same at street-segment granularity.</p>',
+    s6: '<p>These five corridors connect major civic destinations: a train station to a stadium, a convention center to an entertainment district, residential areas to transit hubs. They represent the infrastructure a city is responsible for making safe.</p><p style="font-size:12px;color:#888;">Hover any corridor to see its composite score and identify where the gaps are.</p>',
+    s7: '<p>Infrastructure investment needs to account for time of day. The entertainment district gets safer at night (foot traffic acts as a natural deterrent), but the residential east side degrades. Streetlight investment should target the segments that drop the most after dark.</p>',
+    s8: '<p>The 18-point gap is driven by crime density, not lighting or walkability. That means streetlights alone will not close the gap. But the weight sandbox below lets you model scenarios: set crime weight to zero and see that lighting and walkability are nearly uniform. The planning question becomes: where does adding one streetlight produce the largest marginal safety gain?</p><p>Use the explore section to identify priority corridors. Switch to Navigate to see how routing algorithms trade off distance for safety.</p>'
+  }
+};
+
+let activeRole = 'nightwalker';
+
+function applyRole(role) {
+  activeRole = role;
+  const t = ROLE_TEXT[role];
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById('scene' + i + '-text');
+    if (el && t['s' + i]) el.innerHTML = t['s' + i];
+  }
+  document.querySelectorAll('.role-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.role === role);
+  });
+}
+
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyRole(btn.dataset.role));
+});
