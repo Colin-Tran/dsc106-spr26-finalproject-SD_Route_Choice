@@ -208,6 +208,7 @@ async function init() {
   graph = buildGraph(data.edges);
   drawScrollMap(colorScale);
   drawExploreMap(colorScale);
+  setupLayerControls();
   buildRouteList();
   buildExploreToggles();
   setupModeTabs();
@@ -1439,6 +1440,25 @@ function drawComparisonChart() {
   svg.attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
   svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`).attr('id', 'chart-g');
   updateComparisonHighlight();
+}
+
+function setupLayerControls() {
+  const layers = [
+    { checkbox: "#layer-edges", target: "#explore-edges" },
+    { checkbox: "#layer-crime", target: "#explore-crime" },
+    { checkbox: "#layer-lights", target: "#explore-lights" },
+    { checkbox: "#layer-labels", target: "#explore-labels" }
+  ];
+
+  layers.forEach(layer => {
+    d3.select(layer.checkbox).on("change", function () {
+      d3.select(layer.target)
+        .transition()
+        .duration(250)
+        .style("opacity", this.checked ? 1 : 0)
+        .style("pointer-events", this.checked ? "auto" : "none");
+    });
+  });
 }
 
 function updateComparisonHighlight() {
